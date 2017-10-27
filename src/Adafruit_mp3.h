@@ -6,7 +6,7 @@
 #include "mp3dec.h"
 
 #define OUTBUF_SIZE 1152
-#define INBUF_SIZE 1152
+#define INBUF_SIZE (16 * 1024)
 
 #define BUFFER_LOWER_THRESH 512
 
@@ -38,6 +38,7 @@ private:
 	
 	volatile int bytesLeft;
 	uint8_t *readPtr;
+	uint8_t *writePtr;
 	uint8_t inBuf[INBUF_SIZE];
 	bool playing = false;
 	

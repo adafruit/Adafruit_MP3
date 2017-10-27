@@ -2,7 +2,7 @@
 
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
 
-bool activeOutbuf;
+volatile bool activeOutbuf;
 Adafruit_mp3_outbuf outbufs[2];
 volatile int16_t *outptr;
 static void (*sampleReadyCallback)(int16_t, int16_t);
@@ -75,6 +75,7 @@ void Adafruit_mp3::play()
 	bytesLeft = 0;
 	activeOutbuf = 0;
 	readPtr = inBuf;
+	writePtr = inBuf;
 	
 	outbufs[0].count = 0;
 	outbufs[1].count = 0;
@@ -93,14 +94,19 @@ void Adafruit_mp3::tick(){
 	if(outbufs[activeOutbuf].count < BUFFER_LOWER_THRESH && outbufs[!activeOutbuf].count == 0){
 		
 		//dumb, but we need to move any bytes to the beginning of the buffer
-		if(readPtr != inBuf){
+		if(readPtr != inBuf && bytesLeft < BUFFER_LOWER_THRESH){
 			memmove(inBuf, readPtr, bytesLeft);
 			readPtr = inBuf;
+			writePtr = inBuf + bytesLeft;
 		}
 		
 		//get more data from the user application
-		if(bufferCallback != NULL)
-			bytesLeft += bufferCallback(readPtr + bytesLeft, (INBUF_SIZE - bytesLeft));
+		if(bufferCallback != NULL){
+			uint8_t *bufend = (inBuf + INBUF_SIZE);
+			int bytesRead = bufferCallback(writePtr, bufend - writePtr);
+			writePtr += bytesRead;
+			bytesLeft += bytesRead;
+		}
 		
 		MP3FrameInfo frameInfo;
 		int err, offset;
