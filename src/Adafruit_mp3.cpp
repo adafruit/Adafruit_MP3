@@ -83,7 +83,7 @@ void Adafruit_mp3::play()
 	playing = false;
 }
 
-void Adafruit_mp3::tick(){
+int Adafruit_mp3::tick(){
 	noInterrupts();
 	if(outbufs[activeOutbuf].count == 0 && outbufs[!activeOutbuf].count > 0){
 		//time to swap the buffers
@@ -113,21 +113,32 @@ void Adafruit_mp3::tick(){
 		
 		MP3FrameInfo frameInfo;
 		int err, offset;
-		if(!playing){
-			err = MP3GetNextFrameInfo(hMP3Decoder, &frameInfo, readPtr);
-			if(frameInfo.samprate != 44100)
-			{
-				// For this example, we want only data which
-				// was sampled at 44100 Hz. Ignore this frame.
-				__BKPT();
-			}
-			channels = frameInfo.nChans;
-		}
-		playing = true;
 		
-		/* Find start of next MP3 frame. Assume EOF if no sync found. */
+		while(!playing){
+			/* Find start of next MP3 frame. Assume EOF if no sync found. */
+			offset = MP3FindSyncWord(readPtr, bytesLeft);
+			if(offset >= 0){
+				readPtr += offset;
+				bytesLeft -= offset;
+			}
+			
+			err = MP3GetNextFrameInfo(hMP3Decoder, &frameInfo, readPtr);
+			if(err != ERR_MP3_INVALID_FRAMEHEADER){
+				if(frameInfo.samprate != 44100)
+				{
+					//TODO: set the output timer for the sample rate of the file
+					// For this example, we want only data which
+					// was sampled at 44100 Hz. Ignore this frame.
+					return 1;
+				}
+				else{
+					playing = true;
+					channels = frameInfo.nChans;
+				}
+			}
+		}
+		
 		offset = MP3FindSyncWord(readPtr, bytesLeft);
-
 		if(offset >= 0){
 			readPtr += offset;
 			bytesLeft -= offset;
@@ -138,13 +149,11 @@ void Adafruit_mp3::tick(){
 			outbufs[!activeOutbuf].count += mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
 
 			if (err) {
-				__BKPT();
+				return err;
 			}
 		}
 	}
-	else{
-		//__BKPT();
-	}
+	return 0;
 }
 
 void MP3_Handler()

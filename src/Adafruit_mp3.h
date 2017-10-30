@@ -31,7 +31,7 @@ public:
 		
 	void play();
 	
-	void tick();
+	int tick();
 	
 private:
 	Tc *_tc;
