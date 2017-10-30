@@ -4,18 +4,19 @@
 Adafruit_mp3 player;
 
 void writeDacs(int16_t l, int16_t r){
-	uint8_t val = map(l, -32768, 32767, 0, 255);
-	analogWrite(A0, val);
+  uint8_t val = map(l, -32768, 32767, 0, 255);
+  analogWrite(A0, val);
 }
 
 uint8_t *currentPtr;
 uint32_t thisManyBytesLeft;
 
 int getMoreData(uint8_t *writeHere, int thisManyBytes){
-	int toWrite = min(thisManyBytesLeft, thisManyBytes);
-	memcpy(writeHere, currentPtr, toWrite);
-	currentPtr += toWrite;
-	return toWrite;
+  int toWrite = min(thisManyBytesLeft, thisManyBytes);
+  memcpy(writeHere, currentPtr, toWrite);
+  currentPtr += toWrite;
+  thisManyBytesLeft -= toWrite;
+  return toWrite;
 }
 
 // the setup routine runs once when you press reset:

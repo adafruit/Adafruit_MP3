@@ -41,17 +41,9 @@
  * mp3dec.c - platform-independent top level MP3 decoder API
  **************************************************************************************/
 
-// #include "hlxclib/string.h"		/* for memmove, memcpy (can replace with different implementations if desired) */
-#include <string.h>
+#include <string.h>		/* for memmove, memcpy (can replace with different implementations if desired) */
 #include "mp3common.h"	/* includes mp3dec.h (public API) and internal, platform-independent API */
-#include <stdio.h>
-
-//extern char dbg_buff[];
-
-//#define PROFILE
-#ifdef PROFILE
-#include "systime.h"
-#endif
+//#include "hxthreadyield.h"
 
 /**************************************************************************************
  * Function:    MP3InitDecoder
@@ -255,8 +247,6 @@ int MP3GetNextFrameInfo(HMP3Decoder hMP3Decoder, MP3FrameInfo *mp3FrameInfo, uns
  **************************************************************************************/
 static void MP3ClearBadFrame(MP3DecInfo *mp3DecInfo, short *outbuf)
 {
-	// Atmel.mod: removed as no longer needed.
-	/*
 	int i;
 
 	if (!mp3DecInfo)
@@ -264,7 +254,6 @@ static void MP3ClearBadFrame(MP3DecInfo *mp3DecInfo, short *outbuf)
 
 	for (i = 0; i < mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans; i++)
 		outbuf[i] = 0;
-	*/
 }
 
 /**************************************************************************************
@@ -294,11 +283,8 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 	int prevBitOffset, sfBlockBits, huffBlockBits;
 	unsigned char *mainPtr;
 	MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
-	
-	#ifdef PROFILE
-	long time;
-	#endif
-
+//	ULONG32 ulTime;
+//	StartYield(&ulTime);
 	if (!mp3DecInfo)
 		return ERR_MP3_NULL_POINTER;
 
@@ -308,9 +294,6 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 		return ERR_MP3_INVALID_FRAMEHEADER;		/* don't clear outbuf since we don't know size (failed to parse header) */
 	*inbuf += fhBytes;
 	
-#ifdef PROFILE
-	time = systime_get();
-#endif
 	/* unpack side info */
 	siBytes = UnpackSideInfo(mp3DecInfo, *inbuf);
 	if (siBytes < 0) {
@@ -319,10 +302,6 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 	}
 	*inbuf += siBytes;
 	*bytesLeft -= (fhBytes + siBytes);
-#ifdef PROFILE
-	time = systime_get() - time;
-	printf("UnpackSideInfo: %i ms\n", time);
-#endif
 	
 	/* if free mode, need to calculate bitrate and nSlots manually, based on frame size */
 	if (mp3DecInfo->bitrate == 0 || mp3DecInfo->freeBitrateFlag) {
@@ -363,15 +342,8 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 		/* out of data - assume last or truncated frame */
 		if (mp3DecInfo->nSlots > *bytesLeft) {
 			MP3ClearBadFrame(mp3DecInfo, outbuf);
-
-			//sprintf(dbg_buff, "slots: %d, left: %d\n", mp3DecInfo->nSlots, *bytesLeft);
-
-			return ERR_MP3_INDATA_UNDERFLOW;
+			return ERR_MP3_INDATA_UNDERFLOW;	
 		}
-
-#ifdef PROFILE
-	time = systime_get();
-#endif
 		/* fill main data buffer with enough new data for this frame */
 		if (mp3DecInfo->mainDataBytes >= mp3DecInfo->mainDataBegin) {
 			/* adequate "old" main data available (i.e. bit reservoir) */
@@ -385,18 +357,12 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 		} else {
 			/* not enough data in bit reservoir from previous frames (perhaps starting in middle of file) */
 			memcpy(mp3DecInfo->mainBuf + mp3DecInfo->mainDataBytes, *inbuf, mp3DecInfo->nSlots);
-			
 			mp3DecInfo->mainDataBytes += mp3DecInfo->nSlots;
 			*inbuf += mp3DecInfo->nSlots;
 			*bytesLeft -= (mp3DecInfo->nSlots);
 			MP3ClearBadFrame(mp3DecInfo, outbuf);
 			return ERR_MP3_MAINDATA_UNDERFLOW;
 		}
-#ifdef PROFILE
-	time = systime_get() - time;
-	printf("data buffer filling: %i ms\n", time);
-#endif
-
 	}
 	bitOffset = 0;
 	mainBits = mp3DecInfo->mainDataBytes * 8;
@@ -404,17 +370,9 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 	/* decode one complete frame */
 	for (gr = 0; gr < mp3DecInfo->nGrans; gr++) {
 		for (ch = 0; ch < mp3DecInfo->nChans; ch++) {
-			
-			#ifdef PROFILE
-				time = systime_get();
-			#endif
 			/* unpack scale factors and compute size of scale factor block */
 			prevBitOffset = bitOffset;
 			offset = UnpackScaleFactors(mp3DecInfo, mainPtr, &bitOffset, mainBits, gr, ch);
-			#ifdef PROFILE
-				time = systime_get() - time;
-				printf("UnpackScaleFactors: %i ms\n", time);
-			#endif
 
 			sfBlockBits = 8*offset - prevBitOffset + bitOffset;
 			huffBlockBits = mp3DecInfo->part23Length[gr][ch] - sfBlockBits;
@@ -426,9 +384,6 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 				return ERR_MP3_INVALID_SCALEFACT;
 			}
 
-			#ifdef PROFILE
-				time = systime_get();
-			#endif
 			/* decode Huffman code words */
 			prevBitOffset = bitOffset;
 			offset = DecodeHuffman(mp3DecInfo, mainPtr, &bitOffset, huffBlockBits, gr, ch);
@@ -436,58 +391,29 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, sh
 				MP3ClearBadFrame(mp3DecInfo, outbuf);
 				return ERR_MP3_INVALID_HUFFCODES;
 			}
-			#ifdef PROFILE
-				time = systime_get() - time;
-				printf("Huffman: %i ms\n", time);
-			#endif
 
 			mainPtr += offset;
 			mainBits -= (8*offset - prevBitOffset + bitOffset);
 		}
-		
-		#ifdef PROFILE
-			time = systime_get();
-		#endif
+//		YieldIfRequired(&ulTime);
 		/* dequantize coefficients, decode stereo, reorder short blocks */
 		if (Dequantize(mp3DecInfo, gr) < 0) {
 			MP3ClearBadFrame(mp3DecInfo, outbuf);
 			return ERR_MP3_INVALID_DEQUANTIZE;			
 		}
-		#ifdef PROFILE
-			time = systime_get() - time;
-			printf("Dequantize: %i ms\n", time);
-		#endif
 
 		/* alias reduction, inverse MDCT, overlap-add, frequency inversion */
 		for (ch = 0; ch < mp3DecInfo->nChans; ch++)
-		{
-		#ifdef PROFILE
-			time = systime_get();
-		#endif
 			if (IMDCT(mp3DecInfo, gr, ch) < 0) {
 				MP3ClearBadFrame(mp3DecInfo, outbuf);
 				return ERR_MP3_INVALID_IMDCT;			
 			}
-		#ifdef PROFILE
-			time = systime_get() - time;
-			printf("IMDCT: %i ms\n", time);
-		#endif
-		}
-		
-		#ifdef PROFILE
-			time = systime_get();
-		#endif
-		
+
 		/* subband transform - if stereo, interleaves pcm LRLRLR */
 		if (Subband(mp3DecInfo, outbuf + gr*mp3DecInfo->nGranSamps*mp3DecInfo->nChans) < 0) {
 			MP3ClearBadFrame(mp3DecInfo, outbuf);
 			return ERR_MP3_INVALID_SUBBAND;			
 		}
-		#ifdef PROFILE
-			time = systime_get() - time;
-			printf("Subband: %i ms\n", time);
-		#endif
-		
 	}
 	return ERR_MP3_NONE;
 }

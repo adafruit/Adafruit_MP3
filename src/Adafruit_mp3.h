@@ -5,10 +5,11 @@
 #include "arm_math.h"
 #include "mp3dec.h"
 
-#define OUTBUF_SIZE 1152
+//TODO: decide on a reasonable buffer size
+#define OUTBUF_SIZE (16 * 1024)
 #define INBUF_SIZE (16 * 1024)
 
-#define BUFFER_LOWER_THRESH 512
+#define BUFFER_LOWER_THRESH (8 * 1024)
 
 #define MP3_TC TC2
 #define MP3_IRQn TC2_IRQn
@@ -22,7 +23,7 @@ struct Adafruit_mp3_outbuf {
 
 class Adafruit_mp3 {
 public:
-	Adafruit_mp3() : hMP3Decoder() {}
+	Adafruit_mp3() : hMP3Decoder() { inbufend = (inBuf + INBUF_SIZE); }
 	~Adafruit_mp3() { MP3FreeDecoder(hMP3Decoder); };
 	bool begin();
 	void setBufferCallback(int (*fun_ptr)(uint8_t *, int)){ bufferCallback = fun_ptr; }
@@ -40,6 +41,7 @@ private:
 	uint8_t *readPtr;
 	uint8_t *writePtr;
 	uint8_t inBuf[INBUF_SIZE];
+	uint8_t *inbufend;
 	bool playing = false;
 	
 	int (*bufferCallback)(uint8_t *, int);

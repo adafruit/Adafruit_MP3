@@ -1,4 +1,5 @@
 ﻿#include "Adafruit_mp3.h"
+#include "mp3common.h"
 
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
 
@@ -83,15 +84,16 @@ void Adafruit_mp3::play()
 }
 
 void Adafruit_mp3::tick(){
-		
+	noInterrupts();
 	if(outbufs[activeOutbuf].count == 0 && outbufs[!activeOutbuf].count > 0){
 		//time to swap the buffers
 		activeOutbuf = !activeOutbuf;
 		outptr = outbufs[activeOutbuf].buffer;
 	}
+	interrupts();
 	
 	//if we are running out of samples, and don't yet have another buffer ready, get busy.
-	if(outbufs[activeOutbuf].count < BUFFER_LOWER_THRESH && outbufs[!activeOutbuf].count == 0){
+	if(outbufs[activeOutbuf].count < BUFFER_LOWER_THRESH && outbufs[!activeOutbuf].count < (OUTBUF_SIZE) >> 1){
 		
 		//dumb, but we need to move any bytes to the beginning of the buffer
 		if(readPtr != inBuf && bytesLeft < BUFFER_LOWER_THRESH){
@@ -102,10 +104,11 @@ void Adafruit_mp3::tick(){
 		
 		//get more data from the user application
 		if(bufferCallback != NULL){
-			uint8_t *bufend = (inBuf + INBUF_SIZE);
-			int bytesRead = bufferCallback(writePtr, bufend - writePtr);
-			writePtr += bytesRead;
-			bytesLeft += bytesRead;
+			if(inbufend - writePtr > 0){
+				int bytesRead = bufferCallback(writePtr, inbufend - writePtr);
+				writePtr += bytesRead;
+				bytesLeft += bytesRead;
+			}
 		}
 		
 		MP3FrameInfo frameInfo;
@@ -130,14 +133,17 @@ void Adafruit_mp3::tick(){
 			bytesLeft -= offset;
 				
 			//fil the inactive outbuffer
-			int bytesLeftBeforeDecode = bytesLeft;
-			err = MP3Decode(hMP3Decoder, &readPtr, (int*) &bytesLeft, outbufs[!activeOutbuf].buffer, 0);
-			outbufs[!activeOutbuf].count = bytesLeftBeforeDecode - bytesLeft;
+			err = MP3Decode(hMP3Decoder, &readPtr, (int*) &bytesLeft, outbufs[!activeOutbuf].buffer + outbufs[!activeOutbuf].count, 0);
+			MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
+			outbufs[!activeOutbuf].count += mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
 
 			if (err) {
 				__BKPT();
 			}
 		}
+	}
+	else{
+		//__BKPT();
 	}
 }
 
@@ -145,7 +151,7 @@ void MP3_Handler()
 {
 	//disableTimer();
 	
-	if(outbufs[activeOutbuf].count > channels - 1){
+	if(outbufs[activeOutbuf].count >= channels){
 		//it's sample time!
 		if(sampleReadyCallback != NULL){
 			if(channels == 1)
@@ -158,6 +164,7 @@ void MP3_Handler()
 			outbufs[activeOutbuf].count -= channels;
 		}
 	}
+		
 	//enableTimer();
 	
 	if (MP3_TC->COUNT16.INTFLAG.bit.MC0 == 1) {
