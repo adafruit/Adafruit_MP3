@@ -9,8 +9,8 @@ File dataFile;
 Adafruit_mp3 player;
 
 void writeDacs(int16_t l, int16_t r){
-  uint16_t vall = map(l, -32768, 32767, 0, 255);
-  uint16_t valr = map(r, -32768, 32767, 0, 255);
+  uint16_t vall = map(l, -32768, 32767, 0, 4095);
+  uint16_t valr = map(r, -32768, 32767, 0, 4095);
   analogWrite(A0, vall);
   analogWrite(A1, valr);
 }

@@ -4,7 +4,7 @@
 Adafruit_mp3 player;
 
 void writeDacs(int16_t l, int16_t r){
-  uint8_t val = map(l, -32768, 32767, 0, 255);
+  uint8_t val = map(l, -32768, 32767, 0, 4095);
   analogWrite(A0, val);
 }
 
