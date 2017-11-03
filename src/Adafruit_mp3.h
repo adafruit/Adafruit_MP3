@@ -26,10 +26,12 @@ public:
 	Adafruit_mp3() : hMP3Decoder() { inbufend = (inBuf + INBUF_SIZE); }
 	~Adafruit_mp3() { MP3FreeDecoder(hMP3Decoder); };
 	bool begin();
-	void setBufferCallback(int (*fun_ptr)(uint8_t *, int)){ bufferCallback = fun_ptr; }
+	void setBufferCallback(int (*fun_ptr)(uint8_t *, int));
 	void setSampleReadyCallback(void (*fun_ptr)(int16_t, int16_t));
 		
 	void play();
+	void stop();
+	void resume();
 	
 	int tick();
 	

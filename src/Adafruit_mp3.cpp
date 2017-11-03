@@ -10,18 +10,36 @@ static void (*sampleReadyCallback)(int16_t, int16_t);
 	
 volatile uint8_t channels;
 
+/**
+ *****************************************************************************************
+ *  @brief      enable the playback timer
+ *
+ *  @return     none
+ ****************************************************************************************/
 static inline void enableTimer(){
 	
 	MP3_TC->COUNT16.CTRLA.reg |= TC_CTRLA_ENABLE;
 	WAIT_TC16_REGS_SYNC(MP3_TC)
 }
 
+/**
+ *****************************************************************************************
+ *  @brief      disable the playback timer
+ *
+ *  @return     none
+ ****************************************************************************************/
 static inline void disableTimer(){
 	
 	MP3_TC->COUNT16.CTRLA.bit.ENABLE = 0;
 	WAIT_TC16_REGS_SYNC(MP3_TC)
 }
 
+/**
+ *****************************************************************************************
+ *  @brief      reset the playback timer
+ *
+ *  @return     none
+ ****************************************************************************************/
 static inline void resetTC (Tc* TCx)
 {
 	// Disable TCx
@@ -34,6 +52,12 @@ static inline void resetTC (Tc* TCx)
 	while (TCx->COUNT16.CTRLA.bit.SWRST);
 }
 
+/**
+ *****************************************************************************************
+ *  @brief      Begin the mp3 player. This initializes the playback timer and necessary interrupts.
+ *
+ *  @return     none
+ ****************************************************************************************/
 bool Adafruit_mp3::begin()
 {	
 	sampleReadyCallback = NULL;
@@ -66,13 +90,46 @@ bool Adafruit_mp3::begin()
 	}
 }
 
+/**
+ *****************************************************************************************
+ *  @brief      Set the function the player will call when it's buffers need to be filled. 
+ *				Care must be taken to ensure that the callback function is efficient.
+ *				If the callback takes too long to fill the buffer, playback will be choppy
+ *
+ *	@param		fun_ptr the pointer to the callback function. This function must take a pointer
+ *				to the location the bytes will be written, as well as an integer that represents
+ *				the maximum possible bytes that can be written. The function should return the 
+ *				actual number of bytes that were written.
+ *
+ *  @return     none
+ ****************************************************************************************/
+void Adafruit_mp3::setBufferCallback(int (*fun_ptr)(uint8_t *, int)){ bufferCallback = fun_ptr; }
+
+/**
+ *****************************************************************************************
+ *  @brief      Set the function that the player will call when the playback timer fires.
+ *				The callback is called inside of an ISR, so it should be short and efficient.
+ *				This will usually just be writing samples to the DAC.
+ *
+ *	@param		fun_ptr the pointer to the callback function. The function must take two 
+ *				unsigned 16 bit integers. The first argument to the callback will be the
+ *				left channel sample, and the second channel will be the right channel sample.
+ *				If the played file is mono, only the left channel data is used.
+ *
+ *  @return     none
+ ****************************************************************************************/
 void Adafruit_mp3::setSampleReadyCallback(void (*fun_ptr)(int16_t, int16_t)) { sampleReadyCallback = fun_ptr; }
 
+/**
+ *****************************************************************************************
+ *  @brief      Play an mp3 file. This function resets the buffers and should only be used
+ *				when beginning playback of a new mp3 file. If playback has been stopped
+ *				and you would like to resume playback at the current location, use Adafruit_mp3::resume instead.
+ *
+ *  @return     none
+ ****************************************************************************************/
 void Adafruit_mp3::play()
 {
-	//start the playback timer
-	enableTimer();
-	NVIC_EnableIRQ(MP3_IRQn);
 	bytesLeft = 0;
 	activeOutbuf = 0;
 	readPtr = inBuf;
@@ -81,8 +138,44 @@ void Adafruit_mp3::play()
 	outbufs[0].count = 0;
 	outbufs[1].count = 0;
 	playing = false;
+
+	//start the playback timer
+	enableTimer();
+	NVIC_EnableIRQ(MP3_IRQn);
 }
 
+/**
+ *****************************************************************************************
+ *  @brief      Stop playback. This function stops the playback timer.
+ *
+ *  @return     none
+ ****************************************************************************************/
+void Adafruit_mp3::stop()
+{
+	disableTimer();
+}
+
+/**
+ *****************************************************************************************
+ *  @brief      Resume playback. This function re-enables the playback timer. If you are
+ *				starting playback of a new file, use Adafruit_mp3::play instead
+ *
+ *  @return     none
+ ****************************************************************************************/
+void Adafruit_mp3::resume()
+{
+	enableTimer();
+}
+
+/**
+ *****************************************************************************************
+ *  @brief      The main loop of the mp3 player. This function should be called as fast as
+ *				possible in the loop() function of your sketch. This checks to see if the
+ *				buffers need to be filled, and calls the buffer callback function if necessary.
+ *				It also calls the functions to decode another frame of mp3 data.
+ *
+ *  @return     none
+ ****************************************************************************************/
 int Adafruit_mp3::tick(){
 	noInterrupts();
 	if(outbufs[activeOutbuf].count == 0 && outbufs[!activeOutbuf].count > 0){
@@ -156,6 +249,12 @@ int Adafruit_mp3::tick(){
 	return 0;
 }
 
+/**
+ *****************************************************************************************
+ *  @brief      The IRQ function that gets called whenever the playback timer fires.
+ *
+ *  @return     none
+ ****************************************************************************************/
 void MP3_Handler()
 {
 	//disableTimer();
