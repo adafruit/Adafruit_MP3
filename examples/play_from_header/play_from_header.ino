@@ -1,7 +1,7 @@
-﻿#include "Adafruit_mp3.h"
+#include "Adafruit_MP3.h"
 #include "sine.h"
 
-Adafruit_mp3 player;
+Adafruit_MP3 player;
 
 void writeDacs(int16_t l, int16_t r){
   uint8_t val = map(l, -32768, 32767, 0, 4095);

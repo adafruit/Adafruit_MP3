@@ -1,4 +1,4 @@
-#include "Adafruit_mp3.h"
+#include "Adafruit_MP3.h"
 #include <SPI.h>
 #include <SD.h>
 
@@ -6,11 +6,11 @@ const int chipSelect = 10;
 const char *filename = "test.mp3";
 
 File dataFile;
-Adafruit_mp3 player;
+Adafruit_MP3 player;
 
 void writeDacs(int16_t l, int16_t r){
-  uint16_t vall = map(l, -32768, 32767, 0, 4095);
-  uint16_t valr = map(r, -32768, 32767, 0, 4095);
+  uint16_t vall = map(l, -32768, 32767, 0, 2048);
+  uint16_t valr = map(r, -32768, 32767, 0, 2048);
   analogWrite(A0, vall);
   analogWrite(A1, valr);
 }
@@ -39,9 +39,9 @@ void setup() {
   Serial.print("Initializing SD card...");
 
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
+  while (!SD.begin(12000000, chipSelect)) {
     Serial.println("Card failed, or not present");
-    while(1);
+    delay(2000);
   }
   Serial.println("card initialized.");
   

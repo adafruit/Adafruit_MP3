@@ -1,10 +1,10 @@
-﻿#include "Adafruit_mp3.h"
+﻿#include "Adafruit_MP3.h"
 #include "mp3common.h"
 
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
 
 volatile bool activeOutbuf;
-Adafruit_mp3_outbuf outbufs[2];
+Adafruit_MP3_outbuf outbufs[2];
 volatile int16_t *outptr;
 static void (*sampleReadyCallback)(int16_t, int16_t);
 	
@@ -58,7 +58,7 @@ static inline void resetTC (Tc* TCx)
  *
  *  @return     none
  ****************************************************************************************/
-bool Adafruit_mp3::begin()
+bool Adafruit_MP3::begin()
 {	
 	sampleReadyCallback = NULL;
 	bufferCallback = NULL;
@@ -103,7 +103,7 @@ bool Adafruit_mp3::begin()
  *
  *  @return     none
  ****************************************************************************************/
-void Adafruit_mp3::setBufferCallback(int (*fun_ptr)(uint8_t *, int)){ bufferCallback = fun_ptr; }
+void Adafruit_MP3::setBufferCallback(int (*fun_ptr)(uint8_t *, int)){ bufferCallback = fun_ptr; }
 
 /**
  *****************************************************************************************
@@ -118,17 +118,17 @@ void Adafruit_mp3::setBufferCallback(int (*fun_ptr)(uint8_t *, int)){ bufferCall
  *
  *  @return     none
  ****************************************************************************************/
-void Adafruit_mp3::setSampleReadyCallback(void (*fun_ptr)(int16_t, int16_t)) { sampleReadyCallback = fun_ptr; }
+void Adafruit_MP3::setSampleReadyCallback(void (*fun_ptr)(int16_t, int16_t)) { sampleReadyCallback = fun_ptr; }
 
 /**
  *****************************************************************************************
  *  @brief      Play an mp3 file. This function resets the buffers and should only be used
  *				when beginning playback of a new mp3 file. If playback has been stopped
- *				and you would like to resume playback at the current location, use Adafruit_mp3::resume instead.
+ *				and you would like to resume playback at the current location, use Adafruit_MP3::resume instead.
  *
  *  @return     none
  ****************************************************************************************/
-void Adafruit_mp3::play()
+void Adafruit_MP3::play()
 {
 	bytesLeft = 0;
 	activeOutbuf = 0;
@@ -150,7 +150,7 @@ void Adafruit_mp3::play()
  *
  *  @return     none
  ****************************************************************************************/
-void Adafruit_mp3::stop()
+void Adafruit_MP3::stop()
 {
 	disableTimer();
 }
@@ -158,11 +158,11 @@ void Adafruit_mp3::stop()
 /**
  *****************************************************************************************
  *  @brief      Resume playback. This function re-enables the playback timer. If you are
- *				starting playback of a new file, use Adafruit_mp3::play instead
+ *				starting playback of a new file, use Adafruit_MP3::play instead
  *
  *  @return     none
  ****************************************************************************************/
-void Adafruit_mp3::resume()
+void Adafruit_MP3::resume()
 {
 	enableTimer();
 }
@@ -176,7 +176,7 @@ void Adafruit_mp3::resume()
  *
  *  @return     none
  ****************************************************************************************/
-int Adafruit_mp3::tick(){
+int Adafruit_MP3::tick(){
 	noInterrupts();
 	if(outbufs[activeOutbuf].count == 0 && outbufs[!activeOutbuf].count > 0){
 		//time to swap the buffers
