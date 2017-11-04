@@ -1,4 +1,4 @@
-﻿#include "Adafruit_MP3.h"
+#include "Adafruit_MP3.h"
 #include "mp3common.h"
 
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
