@@ -5,7 +5,11 @@ Adafruit_MP3 player;
 
 void writeDacs(int16_t l, int16_t r){
   uint8_t val = map(l, -32768, 32767, 0, 4095);
+#if defined(__SAMD51__) // feather/metro m4
   analogWrite(A0, val);
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+  analogWrite(A21, vall);
+#endif
 }
 
 uint8_t *currentPtr;
