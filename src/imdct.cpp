@@ -329,9 +329,9 @@ static __inline void idct9(int *x)
  * format = Q30
  */
 static const int fastWin36[18] = {
-	0x42aace8b, 0xc2e92724, 0x47311c28, 0xc95f619a, 0x4a868feb, 0xd0859d8c,
-	0x4c913b51, 0xd8243ea0, 0x4d413ccc, 0xe0000000, 0x4c913b51, 0xe7dbc161,
-	0x4a868feb, 0xef7a6275, 0x47311c28, 0xf6a09e67, 0x42aace8b, 0xfd16d8dd,
+	(int32_t)0x42aace8b, (int32_t)0xc2e92724, (int32_t)0x47311c28, (int32_t)0xc95f619a, (int32_t)0x4a868feb, (int32_t)0xd0859d8c,
+	(int32_t)0x4c913b51, (int32_t)0xd8243ea0, (int32_t)0x4d413ccc, (int32_t)0xe0000000, (int32_t)0x4c913b51, (int32_t)0xe7dbc161,
+	(int32_t)0x4a868feb, (int32_t)0xef7a6275, (int32_t)0x47311c28, (int32_t)0xf6a09e67, (int32_t)0x42aace8b, (int32_t)0xfd16d8dd,
 };
 
 /**************************************************************************************
@@ -464,8 +464,8 @@ static const int fastWin36[18] = {
 	return mOut;
 }
 
-static const int c3_0 = 0x6ed9eba1;	/* format = Q31, cos(pi/6) */
-static const int c6[3] = { 0x7ba3751d, 0x5a82799a, 0x2120fb83 };	/* format = Q31, cos(((0:2) + 0.5) * (pi/6)) */
+static const int c3_0 = (int32_t)0x6ed9eba1;	/* format = Q31, cos(pi/6) */
+static const int c6[3] = { (int32_t)0x7ba3751d, (int32_t)0x5a82799a, (int32_t)0x2120fb83 };	/* format = Q31, cos(((0:2) + 0.5) * (pi/6)) */
 
 /* 12-point inverse DCT, used in IMDCT12x3() 
  * 4 input guard bits will ensure no overflow

@@ -13,10 +13,12 @@
 
 #define MP3_SAMPLE_RATE_DEFAULT 44100
 
+#if defined(__SAMD51__) // feather/metro m4
 #define MP3_TC TC2
 #define MP3_IRQn TC2_IRQn
 #define MP3_Handler TC2_Handler
 #define MP3_GCLK_ID TC2_GCLK_ID
+#endif
 
 struct Adafruit_MP3_outbuf {
 	volatile int count;
@@ -36,9 +38,16 @@ public:
 	void resume();
 	
 	int tick();
+
+#if defined(__MK66FX1M0__)  // teensy 3.6
+	static IntervalTimer _MP3Timer;
+	static uint32_t currentPeriod;
+#endif
 	
 private:
+#if defined(__SAMD51__) // feather/metro m4
 	Tc *_tc;
+#endif
 	HMP3Decoder hMP3Decoder;
 	
 	volatile int bytesLeft;

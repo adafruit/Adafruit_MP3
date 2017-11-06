@@ -104,8 +104,8 @@ static const int pow43[] = {
  * Relative error < 1E-7
  * Coefs are scaled by 4, 2, 1, 0.5, 0.25
  */
-static const int poly43lo[5] = { 0x29a0bda9, 0xb02e4828, 0x5957aa1b, 0x236c498d, 0xff581859 };
-static const int poly43hi[5] = { 0x10852163, 0xd333f6a4, 0x46e9408b, 0x27c2cef0, 0xfef577b4 };
+static const int poly43lo[5] = { (int32_t)0x29a0bda9, (int32_t)0xb02e4828, (int32_t)0x5957aa1b, (int32_t)0x236c498d, (int32_t)0xff581859 };
+static const int poly43hi[5] = { (int32_t)0x10852163, (int32_t)0xd333f6a4, (int32_t)0x46e9408b, (int32_t)0x27c2cef0, (int32_t)0xfef577b4 };
 
 /* pow(2, i*4/3) as exp and frac */
 static const int pow2exp[8]  = { 14, 13, 11, 10, 9, 7, 6, 5 };

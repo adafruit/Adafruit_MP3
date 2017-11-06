@@ -1,7 +1,13 @@
 #include "Adafruit_MP3.h"
 #include "mp3common.h"
 
+#if defined(__SAMD51__) // feather/metro m4
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+IntervalTimer Adafruit_MP3::_MP3Timer;
+uint32_t Adafruit_MP3::currentPeriod;
+static void MP3_Handler();
+#endif
 
 volatile bool activeOutbuf;
 Adafruit_MP3_outbuf outbufs[2];
@@ -16,10 +22,14 @@ volatile uint8_t channels;
  *
  *  @return     none
  ****************************************************************************************/
-static inline void enableTimer(){
-	
+static inline void enableTimer()
+{
+#if defined(__SAMD51__) // feather/metro m4
 	MP3_TC->COUNT16.CTRLA.reg |= TC_CTRLA_ENABLE;
 	WAIT_TC16_REGS_SYNC(MP3_TC)
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+	Adafruit_MP3::_MP3Timer.begin(MP3_Handler, Adafruit_MP3::currentPeriod);
+#endif
 }
 
 /**
@@ -28,10 +38,14 @@ static inline void enableTimer(){
  *
  *  @return     none
  ****************************************************************************************/
-static inline void disableTimer(){
-	
+static inline void disableTimer()
+{
+#if defined(__SAMD51__) // feather/metro m4
 	MP3_TC->COUNT16.CTRLA.bit.ENABLE = 0;
 	WAIT_TC16_REGS_SYNC(MP3_TC)
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+	Adafruit_MP3::_MP3Timer.end();
+#endif
 }
 
 /**
@@ -40,6 +54,7 @@ static inline void disableTimer(){
  *
  *  @return     none
  ****************************************************************************************/
+#if defined(__SAMD51__) // feather/metro m4
 static inline void resetTC (Tc* TCx)
 {
 	// Disable TCx
@@ -50,6 +65,55 @@ static inline void resetTC (Tc* TCx)
 	TCx->COUNT16.CTRLA.reg = TC_CTRLA_SWRST;
 	WAIT_TC16_REGS_SYNC(TCx)
 	while (TCx->COUNT16.CTRLA.bit.SWRST);
+}
+#endif
+
+static inline void configureTimer()
+{
+#if defined(__SAMD51__) // feather/metro m4
+	GCLK->PCHCTRL[MP3_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos);
+	
+	resetTC(MP3_TC);
+	
+	//configure timer for 44.1khz
+	MP3_TC->COUNT16.WAVE.reg = TC_WAVE_WAVEGEN_MFRQ;  // Set TONE_TC mode as match frequency
+
+	MP3_TC->COUNT16.CTRLA.reg |= TC_CTRLA_MODE_COUNT16 | TC_CTRLA_PRESCALER_DIV4;
+	WAIT_TC16_REGS_SYNC(MP3_TC)
+
+	MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / MP3_SAMPLE_RATE_DEFAULT);
+	WAIT_TC16_REGS_SYNC(MP3_TC)
+
+	// Enable the TONE_TC interrupt request
+	MP3_TC->COUNT16.INTENSET.bit.MC0 = 1;
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+	float sec = 1.0 / (float)MP3_SAMPLE_RATE_DEFAULT;
+	Adafruit_MP3::currentPeriod = sec * 1000000UL;
+#endif
+}
+
+static inline void acknowledgeInterrupt()
+{
+#if defined(__SAMD51__) // feather/metro m4
+	if (MP3_TC->COUNT16.INTFLAG.bit.MC0 == 1) {
+		MP3_TC->COUNT16.INTFLAG.bit.MC0 = 1;
+	}
+#endif
+}
+
+static inline void updateTimerFreq(uint32_t freq)
+{
+	disableTimer();
+
+#if defined(__SAMD51__) // feather/metro m4
+	MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / freq);
+	WAIT_TC16_REGS_SYNC(MP3_TC);
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+	float sec = 1.0 / (float)freq;
+	Adafruit_MP3::currentPeriod = sec * 1000000UL;
+#endif
+
+	enableTimer();
 }
 
 /**
@@ -62,32 +126,20 @@ bool Adafruit_MP3::begin()
 {	
 	sampleReadyCallback = NULL;
 	bufferCallback = NULL;
-	
+
+#if defined(__SAMD51__) // feather/metro m4
 	NVIC_DisableIRQ(MP3_IRQn);
 	NVIC_ClearPendingIRQ(MP3_IRQn);
 	NVIC_SetPriority(MP3_IRQn, 0);
-	
-	GCLK->PCHCTRL[MP3_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos);
-	
-	resetTC(MP3_TC);
-	
-	//configure timer for 44.1khz
-	MP3_TC->COUNT16.WAVE.reg = TC_WAVE_WAVEGEN_MFRQ;  // Set TONE_TC mode as match frequency
+#endif
 
-	MP3_TC->COUNT16.CTRLA.reg |= TC_CTRLA_MODE_COUNT16 | TC_CTRLA_PRESCALER_DIV4;
-	WAIT_TC16_REGS_SYNC(MP3_TC)
-
-	//TODO: calculate based on timer clock
-	MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / MP3_SAMPLE_RATE_DEFAULT);
-	WAIT_TC16_REGS_SYNC(MP3_TC)
-
-	// Enable the TONE_TC interrupt request
-	MP3_TC->COUNT16.INTENSET.bit.MC0 = 1;
+	configureTimer();
 	
 	if ((hMP3Decoder = MP3InitDecoder()) == 0)
 	{
 		return false;
 	}
+	else return true;
 }
 
 /**
@@ -141,7 +193,10 @@ void Adafruit_MP3::play()
 
 	//start the playback timer
 	enableTimer();
+
+#if defined(__SAMD51__) // feather/metro m4
 	NVIC_EnableIRQ(MP3_IRQn);
+#endif
 }
 
 /**
@@ -175,7 +230,7 @@ void Adafruit_MP3::resume()
  *
  *  @return     none
  ****************************************************************************************/
-int Adafruit_mp3::findID3Offset(uint8_t *readPtr)
+int Adafruit_MP3::findID3Offset(uint8_t *readPtr)
 {
 	char header[10];
 	memcpy(header, readPtr, 10);
@@ -243,10 +298,7 @@ int Adafruit_MP3::tick(){
 			if(err != ERR_MP3_INVALID_FRAMEHEADER){
 				if(frameInfo.samprate != MP3_SAMPLE_RATE_DEFAULT)
 				{
-					disableTimer();
-					MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / frameInfo.samprate);
-					WAIT_TC16_REGS_SYNC(MP3_TC);
-					enableTimer();
+					updateTimerFreq(frameInfo.samprate);
 				}
 				playing = true;
 				channels = frameInfo.nChans;
@@ -297,8 +349,6 @@ void MP3_Handler()
 	}
 		
 	//enableTimer();
-	
-	if (MP3_TC->COUNT16.INTFLAG.bit.MC0 == 1) {
-		MP3_TC->COUNT16.INTFLAG.bit.MC0 = 1;
-	}
+
+	acknowledgeInterrupt();
 }

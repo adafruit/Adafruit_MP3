@@ -2,7 +2,11 @@
 #include <SPI.h>
 #include <SD.h>
 
+#if defined(__SAMD51__) // feather/metro m4
 const int chipSelect = 10;
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+const int chipSelect = BUILTIN_SDCARD ;
+#endif
 const char *filename = "test.mp3";
 
 File dataFile;
@@ -11,8 +15,13 @@ Adafruit_MP3 player;
 void writeDacs(int16_t l, int16_t r){
   uint16_t vall = map(l, -32768, 32767, 0, 2048);
   uint16_t valr = map(r, -32768, 32767, 0, 2048);
+#if defined(__SAMD51__) // feather/metro m4
   analogWrite(A0, vall);
   analogWrite(A1, valr);
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+  analogWrite(A21, vall);
+  analogWrite(A22, valr);
+#endif
 }
 
 int getMoreData(uint8_t *writeHere, int thisManyBytes){
@@ -39,7 +48,12 @@ void setup() {
   Serial.print("Initializing SD card...");
 
   // see if the card is present and can be initialized:
+#if defined(__SAMD51__) // feather/metro m4
   while (!SD.begin(12000000, chipSelect)) {
+#elif defined(__MK66FX1M0__)  // teensy 3.6
+  analogWriteResolution(12);
+  while (!SD.begin(chipSelect)) {
+#endif
     Serial.println("Card failed, or not present");
     delay(2000);
   }
