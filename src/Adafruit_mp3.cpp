@@ -78,7 +78,7 @@ bool Adafruit_mp3::begin()
 	WAIT_TC16_REGS_SYNC(MP3_TC)
 
 	//TODO: calculate based on timer clock
-	MP3_TC->COUNT16.CC[0].reg = (uint16_t) 650;
+	MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / MP3_SAMPLE_RATE_DEFAULT);
 	WAIT_TC16_REGS_SYNC(MP3_TC)
 
 	// Enable the TONE_TC interrupt request
@@ -169,6 +169,30 @@ void Adafruit_mp3::resume()
 
 /**
  *****************************************************************************************
+ *  @brief      Get the number of bytes until the end of the ID3 tag.
+ *
+ *	@param		readPtr current read pointer
+ *
+ *  @return     none
+ ****************************************************************************************/
+int Adafruit_mp3::findID3Offset(uint8_t *readPtr)
+{
+	char header[10];
+	memcpy(header, readPtr, 10);
+	//http://id3.org/id3v2.3.0#ID3v2_header
+	if(header[0] == 0x49 && header[1] == 0x44 && header[2] == 0x33 && header[3] < 0xFF){
+		//this is a tag
+		uint32_t sz = ((uint32_t)header[6] << 23) | ((uint32_t)header[7] << 15) | ((uint32_t)header[8] << 7) | header[9];
+		return sz;
+	}
+	else{
+		//this is not a tag
+		return 0;
+	}
+}
+
+/**
+ *****************************************************************************************
  *  @brief      The main loop of the mp3 player. This function should be called as fast as
  *				possible in the loop() function of your sketch. This checks to see if the
  *				buffers need to be filled, and calls the buffer callback function if necessary.
@@ -217,18 +241,17 @@ int Adafruit_mp3::tick(){
 			
 			err = MP3GetNextFrameInfo(hMP3Decoder, &frameInfo, readPtr);
 			if(err != ERR_MP3_INVALID_FRAMEHEADER){
-				if(frameInfo.samprate != 44100)
+				if(frameInfo.samprate != MP3_SAMPLE_RATE_DEFAULT)
 				{
-					//TODO: set the output timer for the sample rate of the file
-					// For this example, we want only data which
-					// was sampled at 44100 Hz. Ignore this frame.
-					return 1;
+					disableTimer();
+					MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / frameInfo.samprate);
+					WAIT_TC16_REGS_SYNC(MP3_TC);
+					enableTimer();
 				}
-				else{
-					playing = true;
-					channels = frameInfo.nChans;
-				}
+				playing = true;
+				channels = frameInfo.nChans;
 			}
+			else return 1; //we couldn't find a frame header. It might be ok once we get more data though.
 		}
 		
 		offset = MP3FindSyncWord(readPtr, bytesLeft);

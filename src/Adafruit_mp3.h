@@ -11,6 +11,8 @@
 
 #define BUFFER_LOWER_THRESH (8 * 1024)
 
+#define MP3_SAMPLE_RATE_DEFAULT 44100
+
 #define MP3_TC TC2
 #define MP3_IRQn TC2_IRQn
 #define MP3_Handler TC2_Handler
@@ -47,6 +49,7 @@ private:
 	bool playing = false;
 	
 	int (*bufferCallback)(uint8_t *, int);
+	int findID3Offset(uint8_t *readPtr);
 	
 };
 
