@@ -18,15 +18,15 @@
 #define MP3_Handler TC2_Handler
 #define MP3_GCLK_ID TC2_GCLK_ID
 
-struct Adafruit_mp3_outbuf {
+struct Adafruit_MP3_outbuf {
 	volatile int count;
 	int16_t buffer[OUTBUF_SIZE];	
 };
 
-class Adafruit_mp3 {
+class Adafruit_MP3 {
 public:
-	Adafruit_mp3() : hMP3Decoder() { inbufend = (inBuf + INBUF_SIZE); }
-	~Adafruit_mp3() { MP3FreeDecoder(hMP3Decoder); };
+	Adafruit_MP3() : hMP3Decoder() { inbufend = (inBuf + INBUF_SIZE); }
+	~Adafruit_MP3() { MP3FreeDecoder(hMP3Decoder); };
 	bool begin();
 	void setBufferCallback(int (*fun_ptr)(uint8_t *, int));
 	void setSampleReadyCallback(void (*fun_ptr)(int16_t, int16_t));
