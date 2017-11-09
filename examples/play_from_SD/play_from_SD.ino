@@ -2,6 +2,9 @@
 #include <SPI.h>
 #include <SD.h>
 
+//set this to a value between 0 and 4095 to raise/lower volume
+#define VOLUME_MAX 1023
+
 #if defined(__SAMD51__) // feather/metro m4
 const int chipSelect = 10;
 #elif defined(__MK66FX1M0__)  // teensy 3.6
@@ -13,8 +16,8 @@ File dataFile;
 Adafruit_MP3 player;
 
 void writeDacs(int16_t l, int16_t r){
-  uint16_t vall = map(l, -32768, 32767, 0, 2048);
-  uint16_t valr = map(r, -32768, 32767, 0, 2048);
+  uint16_t vall = map(l, -32768, 32767, 0, VOLUME_MAX);
+  uint16_t valr = map(r, -32768, 32767, 0, VOLUME_MAX);
 #if defined(__SAMD51__) // feather/metro m4
   analogWrite(A0, vall);
   analogWrite(A1, valr);
