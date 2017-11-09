@@ -45,8 +45,6 @@
 #include "coder.h"
 #include "assembly.h"
 
-#include "conf_player.h"
-
 /**************************************************************************************
  * Function:    Subband
  *
