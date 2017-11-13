@@ -2,11 +2,15 @@
 #include "mp3common.h"
 
 #if defined(__SAMD51__) // feather/metro m4
+
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
+
 #elif defined(__MK66FX1M0__)  // teensy 3.6
+
 IntervalTimer Adafruit_MP3::_MP3Timer;
 uint32_t Adafruit_MP3::currentPeriod;
 static void MP3_Handler();
+
 #endif
 
 volatile bool activeOutbuf;
@@ -29,6 +33,9 @@ static inline void enableTimer()
 	WAIT_TC16_REGS_SYNC(MP3_TC)
 #elif defined(__MK66FX1M0__)  // teensy 3.6
 	Adafruit_MP3::_MP3Timer.begin(MP3_Handler, Adafruit_MP3::currentPeriod);
+
+#elif defined(NRF52)
+	MP3_TIMER->TASKS_START = 1;
 #endif
 }
 
@@ -45,6 +52,8 @@ static inline void disableTimer()
 	WAIT_TC16_REGS_SYNC(MP3_TC)
 #elif defined(__MK66FX1M0__)  // teensy 3.6
 	Adafruit_MP3::_MP3Timer.end();
+#elif defined(NRF52)
+	MP3_TIMER->TASKS_STOP = 1;
 #endif
 }
 
@@ -57,6 +66,7 @@ static inline void disableTimer()
 #if defined(__SAMD51__) // feather/metro m4
 static inline void resetTC (Tc* TCx)
 {
+
 	// Disable TCx
 	TCx->COUNT16.CTRLA.reg &= ~TC_CTRLA_ENABLE;
 	WAIT_TC16_REGS_SYNC(TCx)
@@ -65,12 +75,18 @@ static inline void resetTC (Tc* TCx)
 	TCx->COUNT16.CTRLA.reg = TC_CTRLA_SWRST;
 	WAIT_TC16_REGS_SYNC(TCx)
 	while (TCx->COUNT16.CTRLA.bit.SWRST);
+
 }
 #endif
 
 static inline void configureTimer()
 {
 #if defined(__SAMD51__) // feather/metro m4
+
+	NVIC_DisableIRQ(MP3_IRQn);
+	NVIC_ClearPendingIRQ(MP3_IRQn);
+	NVIC_SetPriority(MP3_IRQn, 0);
+
 	GCLK->PCHCTRL[MP3_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK0_Val | (1 << GCLK_PCHCTRL_CHEN_Pos);
 	
 	resetTC(MP3_TC);
@@ -86,6 +102,23 @@ static inline void configureTimer()
 
 	// Enable the TONE_TC interrupt request
 	MP3_TC->COUNT16.INTENSET.bit.MC0 = 1;
+
+#elif defined(NRF52)
+
+	NVIC_DisableIRQ(MP3_IRQn);
+	NVIC_ClearPendingIRQ(MP3_IRQn);
+	NVIC_SetPriority(MP3_IRQn, 15);
+
+	disableTimer();
+	MP3_TIMER->MODE = 0; //timer mode
+	MP3_TIMER->BITMODE = 0; //16 bit mode
+	MP3_TIMER->PRESCALER = 0; //no prescale
+	MP3_TIMER->CC[0] = 16000000UL/MP3_SAMPLE_RATE_DEFAULT;
+	MP3_TIMER->EVENTS_COMPARE[0] = 0;
+	MP3_TIMER->TASKS_CLEAR = 1;
+
+	MP3_TIMER->INTENSET = (1UL << 16); //enable compare 0 interrupt
+
 #elif defined(__MK66FX1M0__)  // teensy 3.6
 	float sec = 1.0 / (float)MP3_SAMPLE_RATE_DEFAULT;
 	Adafruit_MP3::currentPeriod = sec * 1000000UL;
@@ -98,6 +131,10 @@ static inline void acknowledgeInterrupt()
 	if (MP3_TC->COUNT16.INTFLAG.bit.MC0 == 1) {
 		MP3_TC->COUNT16.INTFLAG.bit.MC0 = 1;
 	}
+
+#elif defined(NRF52)
+	MP3_TIMER->EVENTS_COMPARE[0] = 0;
+	MP3_TIMER->TASKS_CLEAR = 1;
 #endif
 }
 
@@ -111,6 +148,11 @@ static inline void updateTimerFreq(uint32_t freq)
 #elif defined(__MK66FX1M0__)  // teensy 3.6
 	float sec = 1.0 / (float)freq;
 	Adafruit_MP3::currentPeriod = sec * 1000000UL;
+
+#elif defined(NRF52)
+
+	MP3_TIMER->CC[0] = 16000000UL/freq;
+
 #endif
 
 	enableTimer();
@@ -126,12 +168,6 @@ bool Adafruit_MP3::begin()
 {	
 	sampleReadyCallback = NULL;
 	bufferCallback = NULL;
-
-#if defined(__SAMD51__) // feather/metro m4
-	NVIC_DisableIRQ(MP3_IRQn);
-	NVIC_ClearPendingIRQ(MP3_IRQn);
-	NVIC_SetPriority(MP3_IRQn, 0);
-#endif
 
 	configureTimer();
 	
@@ -194,7 +230,7 @@ void Adafruit_MP3::play()
 	//start the playback timer
 	enableTimer();
 
-#if defined(__SAMD51__) // feather/metro m4
+#if defined(__SAMD51__) || defined(NRF52) // feather/metro m4
 	NVIC_EnableIRQ(MP3_IRQn);
 #endif
 }
@@ -286,7 +322,7 @@ int Adafruit_MP3::tick(){
 		MP3FrameInfo frameInfo;
 		int err, offset;
 		
-		while(!playing){
+		if(!playing){
 			/* Find start of next MP3 frame. Assume EOF if no sync found. */
 			offset = MP3FindSyncWord(readPtr, bytesLeft);
 			if(offset >= 0){
@@ -303,7 +339,7 @@ int Adafruit_MP3::tick(){
 				playing = true;
 				channels = frameInfo.nChans;
 			}
-			else return 1; //we couldn't find a frame header. It might be ok once we get more data though.
+			return 1;
 		}
 		
 		offset = MP3FindSyncWord(readPtr, bytesLeft);
@@ -330,6 +366,9 @@ int Adafruit_MP3::tick(){
  *
  *  @return     none
  ****************************************************************************************/
+#if defined(NRF52)
+extern "C" {
+#endif
 void MP3_Handler()
 {
 	//disableTimer();
@@ -352,3 +391,6 @@ void MP3_Handler()
 
 	acknowledgeInterrupt();
 }
+#if defined(NRF52)
+}
+#endif
