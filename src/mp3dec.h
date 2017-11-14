@@ -66,7 +66,7 @@
 #
 #elif defined(__CORTEX_M) && __CORTEX_M == 0x04U
 #
-#elif defined(__MK66FX1M0__)
+#elif defined(__MK66FX1M0__) || defined(__MK20DX256__)
 #
 #else
 #error No platform defined. See valid options in mp3dec.h

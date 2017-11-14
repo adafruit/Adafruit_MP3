@@ -5,10 +5,12 @@
 //set this to a value between 0 and 4095 to raise/lower volume
 #define VOLUME_MAX 1023
 
-#if defined(__SAMD51__) // feather/metro m4
-const int chipSelect = 10;
-#elif defined(__MK66FX1M0__)  // teensy 3.6
+#if defined(__MK66FX1M0__)  // teensy 3.6
 const int chipSelect = BUILTIN_SDCARD ;
+#elif defined(__MK20DX256__) //teensy 3.1
+const int chipSelect = 10;
+#else
+const int chipSelect = 11;
 #endif
 const char *filename = "test.mp3";
 
@@ -24,6 +26,10 @@ void writeDacs(int16_t l, int16_t r){
 #elif defined(__MK66FX1M0__)  // teensy 3.6
   analogWrite(A21, vall);
   analogWrite(A22, valr);
+#elif defined(NRF52)
+  analogWrite(27, vall);
+#elif defined(__MK20DX256__) //teensy 3.2
+  analogWrite(A14, vall); //this board only has one dac, so play only left channel (or mono)
 #endif
 }
 
@@ -51,11 +57,11 @@ void setup() {
   Serial.print("Initializing SD card...");
 
   // see if the card is present and can be initialized:
-#if defined(__SAMD51__) // feather/metro m4
-  while (!SD.begin(12000000, chipSelect)) {
-#elif defined(__MK66FX1M0__)  // teensy 3.6
+#if defined(__MK66FX1M0__) || defined(__MK20DX256__)  // teensy 3.6 or 3.1/2
   analogWriteResolution(12);
   while (!SD.begin(chipSelect)) {
+#else
+  while (!SD.begin(12000000, chipSelect)) {
 #endif
     Serial.println("Card failed, or not present");
     delay(2000);
