@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 
-#if defined(__SAMD51__) || defined(__MK66FX1M0__) || defined(__MK20DX256__)|| defined(NRF52)
+#if defined(__MK66FX1M0__) || defined(__MK20DX256__)|| defined(NRF52)
 #define ARM_MATH_CM4
 #endif
 
@@ -12,8 +12,8 @@
 
 //TODO: decide on a reasonable buffer size
 #if defined(NRF52)
-#define OUTBUF_SIZE (2500)
-#define INBUF_SIZE (768)
+#define OUTBUF_SIZE (4 * 1024)
+#define INBUF_SIZE (2 * 1024)
 
 #define BUFFER_LOWER_THRESH (1 * 1024)
 #else

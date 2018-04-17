@@ -53,6 +53,11 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+#if defined(__SAMD51__)
+  analogWrite(A0, 2048);
+  analogWrite(A1, 2048);
+#endif
+
   Serial.println("Native MP3 decoding!");
   Serial.print("Initializing SD card...");
 

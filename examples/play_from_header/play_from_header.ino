@@ -4,11 +4,11 @@
 Adafruit_MP3 player;
 
 void writeDacs(int16_t l, int16_t r){
-  uint8_t val = map(l, -32768, 32767, 0, 4095);
+  uint16_t val = map(l, -32768, 32767, 0, 4095);
 #if defined(__SAMD51__) // feather/metro m4
   analogWrite(A0, val);
 #elif defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
-  analogWrite(A21, vall);
+  analogWrite(A21, val);
 #endif
 }
 
@@ -24,19 +24,24 @@ int getMoreData(uint8_t *writeHere, int thisManyBytes){
 }
 
 // the setup routine runs once when you press reset:
-void setup() {         
-  
+void setup() {
+
+#if defined(__SAMD51__)
+  //set the DAC to the center of the range
+  analogWrite(A0, 2048);
+#endif
+
   currentPtr = (uint8_t*)sine_mp3;
   thisManyBytesLeft = sizeof(sine_mp3);
-  
+
   player.begin();
-  
+
   //do this when there are samples ready
   player.setSampleReadyCallback(writeDacs);
-  
+
   //do this when more data is required
   player.setBufferCallback(getMoreData);
-  
+
   player.play();
 }
 
