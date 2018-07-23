@@ -12,13 +12,13 @@
 
 //TODO: decide on a reasonable buffer size
 #if defined(NRF52)
-#define OUTBUF_SIZE (4 * 1024)
-#define INBUF_SIZE (2 * 1024)
+#define MP3_OUTBUF_SIZE (4 * 1024)
+#define MP3_INBUF_SIZE (2 * 1024)
 
 #define BUFFER_LOWER_THRESH (1 * 1024)
 #else
-#define OUTBUF_SIZE (4 * 1024)
-#define INBUF_SIZE (2 * 1024)
+#define MP3_OUTBUF_SIZE (4 * 1024)
+#define MP3_INBUF_SIZE (2 * 1024)
 
 #define BUFFER_LOWER_THRESH (1 * 1024)
 #endif
@@ -31,6 +31,7 @@
 #define MP3_IRQn TC2_IRQn
 #define MP3_Handler TC2_Handler
 #define MP3_GCLK_ID TC2_GCLK_ID
+#define MP3_DMA_TRIGGER TC2_DMAC_ID_MC_0
 
 #elif defined(NRF52)
 
@@ -42,12 +43,12 @@
 
 struct Adafruit_MP3_outbuf {
 	volatile int count;
-	int16_t buffer[OUTBUF_SIZE];	
+	int16_t buffer[MP3_OUTBUF_SIZE];
 };
 
 class Adafruit_MP3 {
 public:
-	Adafruit_MP3() : hMP3Decoder() { inbufend = (inBuf + INBUF_SIZE); }
+	Adafruit_MP3() : hMP3Decoder() { inbufend = (inBuf + MP3_INBUF_SIZE); }
 	~Adafruit_MP3() { MP3FreeDecoder(hMP3Decoder); };
 	bool begin();
 	void setBufferCallback(int (*fun_ptr)(uint8_t *, int));
@@ -64,7 +65,7 @@ public:
 	static uint32_t currentPeriod;
 #endif
 	
-private:
+protected:
 #if defined(__SAMD51__) // feather/metro m4
 	Tc *_tc;
 #endif
@@ -73,13 +74,35 @@ private:
 	volatile int bytesLeft;
 	uint8_t *readPtr;
 	uint8_t *writePtr;
-	uint8_t inBuf[INBUF_SIZE];
+	uint8_t inBuf[MP3_INBUF_SIZE];
 	uint8_t *inbufend;
 	bool playing = false;
 	
 	int (*bufferCallback)(uint8_t *, int);
 	int findID3Offset(uint8_t *readPtr);
 	
+};
+
+class Adafruit_MP3_DMA : public Adafruit_MP3 {
+public:
+	Adafruit_MP3_DMA() : Adafruit_MP3() {
+		framebuf = NULL;
+		decodeCallback = NULL;
+	}
+	~Adafruit_MP3_DMA() {
+		if(framebuf != NULL) free(framebuf);
+	}
+
+	void getBuffers(int16_t **ping, int16_t **pong);
+	void setDecodeCallback(void (*fun_ptr)(int16_t *, int)) { decodeCallback = fun_ptr; }
+
+	void play();
+	int fill();
+private:
+	int16_t *framebuf, *leftover;
+	int leftoverSamples;
+	MP3FrameInfo frameInfo;
+	void (*decodeCallback)(int16_t *, int);
 };
 
 #endif

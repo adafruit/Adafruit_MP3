@@ -235,6 +235,20 @@ void Adafruit_MP3::play()
 #endif
 }
 
+void Adafruit_MP3_DMA::play()
+{
+#if defined(__SAMD51__)
+	//don't need an interrupt here
+	MP3_TC->COUNT16.INTENCLR.bit.MC0 = 1;
+#endif
+	Adafruit_MP3::play();
+	NVIC_DisableIRQ(MP3_IRQn); //we don't need the interrupt
+	leftoverSamples = 0;
+
+	//fill both buffers
+	fill();
+}
+
 /**
  *****************************************************************************************
  *  @brief      Stop playback. This function stops the playback timer.
@@ -282,6 +296,11 @@ int Adafruit_MP3::findID3Offset(uint8_t *readPtr)
 	}
 }
 
+void Adafruit_MP3_DMA::getBuffers(int16_t **ping, int16_t **pong){
+	*pong = outbufs[0].buffer;
+	*ping = outbufs[1].buffer;
+}
+
 /**
  *****************************************************************************************
  *  @brief      The main loop of the mp3 player. This function should be called as fast as
@@ -301,7 +320,7 @@ int Adafruit_MP3::tick(){
 	interrupts();
 	
 	//if we are running out of samples, and don't yet have another buffer ready, get busy.
-	if(outbufs[activeOutbuf].count < BUFFER_LOWER_THRESH && outbufs[!activeOutbuf].count < (OUTBUF_SIZE) >> 1){
+	if(outbufs[activeOutbuf].count < BUFFER_LOWER_THRESH && outbufs[!activeOutbuf].count < (MP3_OUTBUF_SIZE) >> 1){
 		
 		//dumb, but we need to move any bytes to the beginning of the buffer
 		if(readPtr != inBuf && bytesLeft < BUFFER_LOWER_THRESH){
@@ -359,6 +378,115 @@ int Adafruit_MP3::tick(){
 	}
 	return 0;
 }
+
+//fill a buffer with data
+int Adafruit_MP3_DMA::fill(){
+
+	int ret = 0;
+	int16_t *curBuf = outbufs[activeOutbuf].buffer;
+
+	//put any leftover samples in the new buffer
+	if(leftoverSamples > 0){
+		memcpy(outbufs[activeOutbuf].buffer, leftover, leftoverSamples*sizeof(int16_t));
+		outbufs[activeOutbuf].count +=leftoverSamples;
+		leftoverSamples = 0;
+	}
+
+	while(outbufs[activeOutbuf].count < MP3_OUTBUF_SIZE){
+loopstart:
+		//dumb, but we need to move any bytes to the beginning of the buffer
+		if(readPtr != inBuf && bytesLeft < BUFFER_LOWER_THRESH){
+			memmove(inBuf, readPtr, bytesLeft);
+			readPtr = inBuf;
+			writePtr = inBuf + bytesLeft;
+		}
+
+		//get more data from the user application
+		if(bufferCallback != NULL){
+			if(inbufend - writePtr > 0){
+				int bytesRead = bufferCallback(writePtr, inbufend - writePtr);
+				if(bytesRead == 0){
+					ret = 1;
+					break;
+				}
+				writePtr += bytesRead;
+				bytesLeft += bytesRead;
+			}
+		}
+
+		int err, offset;
+
+		if(!playing){
+			/* Find start of next MP3 frame. Assume EOF if no sync found. */
+			offset = MP3FindSyncWord(readPtr, bytesLeft);
+			if(offset >= 0){
+				readPtr += offset;
+				bytesLeft -= offset;
+			}
+
+			err = MP3GetNextFrameInfo(hMP3Decoder, &frameInfo, readPtr);
+			if(err != ERR_MP3_INVALID_FRAMEHEADER){
+				if(frameInfo.samprate != MP3_SAMPLE_RATE_DEFAULT)
+				{
+					updateTimerFreq(frameInfo.samprate);
+				}
+				playing = true;
+				channels = frameInfo.nChans;
+			}
+			if(framebuf != NULL) free(framebuf);
+			framebuf = (int16_t *)malloc(frameInfo.nChans * frameInfo.bitsPerSample/8 * frameInfo.outputSamps);
+			goto loopstart;
+		}
+
+		offset = MP3FindSyncWord(readPtr, bytesLeft);
+		if(offset >= 0){
+			readPtr += offset;
+			bytesLeft -= offset;
+
+			if(outbufs[activeOutbuf].count + frameInfo.nChans * frameInfo.bitsPerSample/16 * frameInfo.outputSamps <= MP3_OUTBUF_SIZE){
+				//we can read directly into the output buffer so lets do that
+				err = MP3Decode(hMP3Decoder, &readPtr, (int*) &bytesLeft, outbufs[activeOutbuf].buffer + outbufs[activeOutbuf].count, 0);
+				MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
+				outbufs[activeOutbuf].count += mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
+
+				//if they line up exactly, swap buffers and return
+				if(outbufs[activeOutbuf].count == MP3_OUTBUF_SIZE){
+					activeOutbuf = !activeOutbuf;
+					outbufs[activeOutbuf].count = 0;
+					ret = 0;
+					break;
+				}
+			}
+			else{
+				//the frame would cross byte boundaries, we need to split manually
+				err = MP3Decode(hMP3Decoder, &readPtr, (int*) &bytesLeft, framebuf, 0);
+				MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
+				int thisRead = mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
+				int remainder = MP3_OUTBUF_SIZE - outbufs[activeOutbuf].count;
+				memcpy(outbufs[activeOutbuf].buffer + outbufs[activeOutbuf].count, framebuf, remainder*sizeof(int16_t));
+				leftover = framebuf + remainder;
+				leftoverSamples = (thisRead-remainder);
+
+				//swap buffers
+				activeOutbuf = !activeOutbuf;
+				outbufs[activeOutbuf].count = 0;
+				ret = 0;
+				break;
+			}
+
+			if (err) {
+				return err;
+			}
+		}
+	}
+
+	if(decodeCallback != NULL) decodeCallback(curBuf, MP3_OUTBUF_SIZE);
+
+
+	return ret;
+}
+
+
 
 /**
  *****************************************************************************************
