@@ -17,9 +17,8 @@ volatile bool activeOutbuf;
 Adafruit_MP3_outbuf outbufs[2];
 volatile int16_t *outptr;
 static void (*sampleReadyCallback)(int16_t, int16_t);
-	
-volatile uint8_t channels;
 
+uint8_t Adafruit_MP3::numChannels = 0;
 /**
  *****************************************************************************************
  *  @brief      enable the playback timer
@@ -356,7 +355,7 @@ int Adafruit_MP3::tick(){
 					updateTimerFreq(frameInfo.samprate);
 				}
 				playing = true;
-				channels = frameInfo.nChans;
+				numChannels = frameInfo.nChans;
 			}
 			return 1;
 		}
@@ -431,7 +430,7 @@ loopstart:
 					updateTimerFreq(frameInfo.samprate);
 				}
 				playing = true;
-				channels = frameInfo.nChans;
+				Adafruit_MP3::numChannels = frameInfo.nChans;
 			}
 			if(framebuf != NULL) free(framebuf);
 			framebuf = (int16_t *)malloc(frameInfo.outputSamps*sizeof(int16_t));
@@ -492,17 +491,17 @@ void MP3_Handler()
 {
 	//disableTimer();
 	
-	if(outbufs[activeOutbuf].count >= channels){
+	if(outbufs[activeOutbuf].count >= Adafruit_MP3::numChannels){
 		//it's sample time!
 		if(sampleReadyCallback != NULL){
-			if(channels == 1)
+			if(Adafruit_MP3::numChannels == 1)
 				sampleReadyCallback(*outptr, 0);
 			else
 				sampleReadyCallback(*outptr, *(outptr + 1));
 			
 			//increment the read position and decrement the remaining sample count
-			outptr += channels;
-			outbufs[activeOutbuf].count -= channels;
+			outptr += Adafruit_MP3::numChannels;
+			outbufs[activeOutbuf].count -= Adafruit_MP3::numChannels;
 		}
 	}
 		

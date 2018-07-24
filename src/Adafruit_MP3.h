@@ -64,6 +64,8 @@ public:
 	static IntervalTimer _MP3Timer;
 	static uint32_t currentPeriod;
 #endif
+
+	static uint8_t numChannels;
 	
 protected:
 #if defined(__SAMD51__) // feather/metro m4
@@ -80,7 +82,7 @@ protected:
 	
 	int (*bufferCallback)(uint8_t *, int);
 	int findID3Offset(uint8_t *readPtr);
-	
+
 };
 
 class Adafruit_MP3_DMA : public Adafruit_MP3 {
