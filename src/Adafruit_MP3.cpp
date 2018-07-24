@@ -250,11 +250,11 @@ void Adafruit_MP3_DMA::play()
 
 /**
  *****************************************************************************************
- *  @brief      Stop playback. This function stops the playback timer.
+ *  @brief      pause playback. This function stops the playback timer.
  *
  *  @return     none
  ****************************************************************************************/
-void Adafruit_MP3::stop()
+void Adafruit_MP3::pause()
 {
 	disableTimer();
 }

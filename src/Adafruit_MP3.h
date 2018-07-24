@@ -55,7 +55,7 @@ public:
 	void setSampleReadyCallback(void (*fun_ptr)(int16_t, int16_t));
 		
 	void play();
-	void stop();
+	void pause();
 	void resume();
 	
 	int tick();
