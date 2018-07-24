@@ -388,7 +388,7 @@ int Adafruit_MP3_DMA::fill(){
 	//put any leftover samples in the new buffer
 	if(leftoverSamples > 0){
 		memcpy(outbufs[activeOutbuf].buffer, leftover, leftoverSamples*sizeof(int16_t));
-		outbufs[activeOutbuf].count +=leftoverSamples;
+		outbufs[activeOutbuf].count = leftoverSamples;
 		leftoverSamples = 0;
 	}
 
@@ -434,7 +434,7 @@ loopstart:
 				channels = frameInfo.nChans;
 			}
 			if(framebuf != NULL) free(framebuf);
-			framebuf = (int16_t *)malloc(frameInfo.nChans * frameInfo.bitsPerSample/8 * frameInfo.outputSamps);
+			framebuf = (int16_t *)malloc(frameInfo.outputSamps*sizeof(int16_t));
 			goto loopstart;
 		}
 
@@ -443,29 +443,20 @@ loopstart:
 			readPtr += offset;
 			bytesLeft -= offset;
 
-			if(outbufs[activeOutbuf].count + frameInfo.nChans * frameInfo.bitsPerSample/16 * frameInfo.outputSamps <= MP3_OUTBUF_SIZE){
+			MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
+			int toRead = mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
+			if(outbufs[activeOutbuf].count + toRead < MP3_OUTBUF_SIZE){
 				//we can read directly into the output buffer so lets do that
 				err = MP3Decode(hMP3Decoder, &readPtr, (int*) &bytesLeft, outbufs[activeOutbuf].buffer + outbufs[activeOutbuf].count, 0);
-				MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
-				outbufs[activeOutbuf].count += mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
-
-				//if they line up exactly, swap buffers and return
-				if(outbufs[activeOutbuf].count == MP3_OUTBUF_SIZE){
-					activeOutbuf = !activeOutbuf;
-					outbufs[activeOutbuf].count = 0;
-					ret = 0;
-					break;
-				}
+				outbufs[activeOutbuf].count += toRead;
 			}
 			else{
 				//the frame would cross byte boundaries, we need to split manually
 				err = MP3Decode(hMP3Decoder, &readPtr, (int*) &bytesLeft, framebuf, 0);
-				MP3DecInfo *mp3DecInfo = (MP3DecInfo *)hMP3Decoder;
-				int thisRead = mp3DecInfo->nGrans * mp3DecInfo->nGranSamps * mp3DecInfo->nChans;
 				int remainder = MP3_OUTBUF_SIZE - outbufs[activeOutbuf].count;
 				memcpy(outbufs[activeOutbuf].buffer + outbufs[activeOutbuf].count, framebuf, remainder*sizeof(int16_t));
 				leftover = framebuf + remainder;
-				leftoverSamples = (thisRead-remainder);
+				leftoverSamples = (toRead-remainder);
 
 				//swap buffers
 				activeOutbuf = !activeOutbuf;

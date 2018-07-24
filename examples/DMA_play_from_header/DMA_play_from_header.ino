@@ -27,9 +27,12 @@ int getMoreData(uint8_t *writeHere, int thisManyBytes){
 
 //this will get called when data has been decoded
 void decodeCallback(int16_t *data, int len){
-  for(int i=0; i<len; i++)
-    *data++ = map(*data, -32768, 32767, 0, 4095);
+  for(int i=0; i<len; i++){
+    int val = map(*data, -32768, 32767, 0, VOLUME_MAX);
+    *data++ = val;
+  }
 }
+
 
 void dma_callback(Adafruit_ZeroDMA *dma) {
 
@@ -99,4 +102,3 @@ void setup() {
 void loop() {
 
 }
-
