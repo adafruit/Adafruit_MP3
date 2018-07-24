@@ -3,7 +3,9 @@
  *  the PLAY pin will start playback from the beginning of the file
  *  the PAUSE pin will pause playback at the current point
  *  the RESUME pin will resume playback at the point it was paused
+ *  a potentiometer is connected to the VOLUME pin to set the playback volume
  */
+ 
 #include "Adafruit_MP3.h"
 #include <SPI.h>
 #include <SD.h>
