@@ -4,6 +4,8 @@
 #include <Adafruit_ZeroDMA.h>
 #include "utility/dma.h"
 
+#define VOLUME_MAX 2047
+
 Adafruit_ZeroDMA myDMA;
 ZeroDMAstatus    stat; // DMA status codes returned by some functions
 Adafruit_MP3_DMA player;
