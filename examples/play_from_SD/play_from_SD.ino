@@ -5,7 +5,7 @@
 //set this to a value between 0 and 4095 to raise/lower volume
 #define VOLUME_MAX 1023
 
-#if defined(__MK66FX1M0__)  // teensy 3.6
+#if defined(__MK66FX1M0__) || defined(__MK64FX512__)  // teensy 3.6 or 3.5
 const int chipSelect = BUILTIN_SDCARD ;
 #elif defined(__MK20DX256__) //teensy 3.1
 const int chipSelect = 10;
@@ -23,7 +23,7 @@ void writeDacs(int16_t l, int16_t r){
 #if defined(__SAMD51__) // feather/metro m4
   analogWrite(A0, vall);
   analogWrite(A1, valr);
-#elif defined(__MK66FX1M0__)  // teensy 3.6
+#elif defined(__MK66FX1M0__) || defined(__MK64FX512__)  // teensy 3.6 or 3.5
   analogWrite(A21, vall);
   analogWrite(A22, valr);
 #elif defined(NRF52)
@@ -53,16 +53,11 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-#if defined(__SAMD51__)
-  analogWrite(A0, 2048);
-  analogWrite(A1, 2048);
-#endif
-
   Serial.println("Native MP3 decoding!");
   Serial.print("Initializing SD card...");
 
   // see if the card is present and can be initialized:
-#if defined(__MK66FX1M0__) || defined(__MK20DX256__)  // teensy 3.6 or 3.1/2
+#if defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__)  // teensy 3.6, 3.5, or 3.1/2
   analogWriteResolution(12);
   while (!SD.begin(chipSelect)) {
 #else

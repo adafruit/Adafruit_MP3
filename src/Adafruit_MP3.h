@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 
-#if defined(__MK66FX1M0__) || defined(__MK20DX256__)|| defined(NRF52)
+#if defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__)|| defined(NRF52)	// teensy 3.6, 3.5, 3.1/2, or Adafruit Feather nRF52
 #define ARM_MATH_CM4
 #endif
 
@@ -60,7 +60,7 @@ public:
 	
 	int tick();
 
-#if defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
+#if defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__) // teensy 3.6, 3.5, or 3.1/2
 	static IntervalTimer _MP3Timer;
 	static uint32_t currentPeriod;
 #endif
