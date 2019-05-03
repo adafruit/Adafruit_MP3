@@ -350,17 +350,22 @@ int Adafruit_MP3::tick(){
     int err, offset;
     
     if (!playing) {
-      //Serial.println("no play, find frame");
+      Serial.println("Starting playback");
       
       /* Find start of next MP3 frame. Assume EOF if no sync found. */
       offset = MP3FindSyncWord(readPtr, bytesLeft);
+      Serial.print("Offset: "); Serial.println(offset);
       if (offset >= 0) {
 	readPtr += offset;
 	bytesLeft -= offset;
       }
 		  
       err = MP3GetNextFrameInfo(hMP3Decoder, &frameInfo, readPtr);
-      if (err != ERR_MP3_INVALID_FRAMEHEADER) {
+      if (err == ERR_MP3_INVALID_FRAMEHEADER) {
+	readPtr += 1;
+	bytesLeft -= 1;
+      } else {
+	Serial.print("Setting timer sample rate to: "); Serial.println(frameInfo.samprate);
 	if (frameInfo.samprate != MP3_SAMPLE_RATE_DEFAULT) {
 	  updateTimerFreq(frameInfo.samprate);
 	}
