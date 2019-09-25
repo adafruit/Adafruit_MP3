@@ -382,7 +382,7 @@ __attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)
   return( x );
 }
 
-#elif (defined(__CORTEX_M) && __CORTEX_M == 0x04U) || defined(__MK66FX1M0__) || defined(__MK20DX256__)
+#elif (defined(__CORTEX_M) && __CORTEX_M == 0x04U) || defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__)	/* teensy 3.6, 3.5, or 3.1/2 */
 
 /* ARM cortex m4 */
 
@@ -420,7 +420,7 @@ static __inline int FASTABS(int x)
 
 static __inline int CLZ(int x)
 {
-#if defined(__MK66FX1M0__) || defined(__MK20DX256__)
+#if defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__)	/* teensy 3.6, 3.5, or 3.1/2 */
 	return __builtin_clz(x);
 #else
 	return __CLZ(x);

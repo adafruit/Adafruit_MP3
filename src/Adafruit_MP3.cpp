@@ -5,7 +5,7 @@
 
 #define WAIT_TC16_REGS_SYNC(x) while(x->COUNT16.SYNCBUSY.bit.ENABLE);
 
-#elif defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
+#elif defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__) // teensy 3.6, 3.5. or 3.1/2
 
 IntervalTimer Adafruit_MP3::_MP3Timer;
 uint32_t Adafruit_MP3::currentPeriod;
@@ -28,11 +28,10 @@ uint8_t Adafruit_MP3::numChannels = 0;
 static inline void enableTimer()
 {
 #if defined(__SAMD51__) // feather/metro m4
-  MP3_TC->COUNT16.CTRLA.reg |= TC_CTRLA_ENABLE;
-  WAIT_TC16_REGS_SYNC(MP3_TC)
-#elif defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
-    Adafruit_MP3::_MP3Timer.begin(MP3_Handler, Adafruit_MP3::currentPeriod);
-
+	MP3_TC->COUNT16.CTRLA.reg |= TC_CTRLA_ENABLE;
+	WAIT_TC16_REGS_SYNC(MP3_TC)
+#elif defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__) // teensy 3.6, 3.5. or 3.1/2
+	Adafruit_MP3::_MP3Timer.begin(MP3_Handler, Adafruit_MP3::currentPeriod);
 #elif defined(NRF52)
   MP3_TIMER->TASKS_START = 1;
 #endif
@@ -47,10 +46,10 @@ static inline void enableTimer()
 static inline void disableTimer()
 {
 #if defined(__SAMD51__) // feather/metro m4
-  MP3_TC->COUNT16.CTRLA.bit.ENABLE = 0;
-  WAIT_TC16_REGS_SYNC(MP3_TC)
-#elif defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
-    Adafruit_MP3::_MP3Timer.end();
+	MP3_TC->COUNT16.CTRLA.bit.ENABLE = 0;
+	WAIT_TC16_REGS_SYNC(MP3_TC)
+#elif defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__) // teensy 3.6, 3.5. or 3.1/2
+	Adafruit_MP3::_MP3Timer.end();
 #elif defined(NRF52)
   MP3_TIMER->TASKS_STOP = 1;
 #endif
@@ -118,9 +117,9 @@ static inline void configureTimer()
 
   MP3_TIMER->INTENSET = (1UL << 16); //enable compare 0 interrupt
 
-#elif defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
-  float sec = 1.0 / (float)MP3_SAMPLE_RATE_DEFAULT;
-  Adafruit_MP3::currentPeriod = sec * 1000000UL;
+#elif defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__) // teensy 3.6, 3.5. or 3.1/2
+	float sec = 1.0 / (float)MP3_SAMPLE_RATE_DEFAULT;
+	Adafruit_MP3::currentPeriod = sec * 1000000UL;
 #endif
 }
 
@@ -142,16 +141,13 @@ static inline void updateTimerFreq(uint32_t freq)
   disableTimer();
 
 #if defined(__SAMD51__) // feather/metro m4
-  MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / freq);
-  WAIT_TC16_REGS_SYNC(MP3_TC);
-#elif defined(__MK66FX1M0__) || defined(__MK20DX256__) // teensy 3.6
-  float sec = 1.0 / (float)freq;
-  Adafruit_MP3::currentPeriod = sec * 1000000UL;
-
+	MP3_TC->COUNT16.CC[0].reg = (uint16_t)( (SystemCoreClock >> 2) / freq);
+	WAIT_TC16_REGS_SYNC(MP3_TC);
+#elif defined(__MK66FX1M0__) || defined(__MK64FX512__) || defined(__MK20DX256__) // teensy 3.6, 3.5. or 3.1/2
+	float sec = 1.0 / (float)freq;
+	Adafruit_MP3::currentPeriod = sec * 1000000UL;
 #elif defined(NRF52)
-
   MP3_TIMER->CC[0] = 16000000UL/freq;
-
 #endif
 
   enableTimer();
@@ -240,9 +236,11 @@ void Adafruit_MP3_DMA::play()
   //don't need an interrupt here
   MP3_TC->COUNT16.INTENCLR.bit.MC0 = 1;
 #endif
-  Adafruit_MP3::play();
-  NVIC_DisableIRQ(MP3_IRQn); //we don't need the interrupt
-  leftoverSamples = 0;
+	Adafruit_MP3::play();
+#if defined(__SAMD51__) || defined(NRF52) // feather/metro m4
+	NVIC_DisableIRQ(MP3_IRQn); //we don't need the interrupt
+#endif
+	leftoverSamples = 0;
 
   //fill both buffers
   fill();
