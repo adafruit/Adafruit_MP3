@@ -60,6 +60,8 @@
 #
 #elif defined(__GNUC__) && defined(ARM)
 #
+#elif defined(__GNUC__) && defined(__ARMEL__)
+#
 #elif defined(__GNUC__) && defined(__i386__)
 #
 #elif defined(_OPENWAVE_SIMULATOR) || defined(_OPENWAVE_ARMULATOR)
