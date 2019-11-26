@@ -56,6 +56,10 @@
 #ifndef _ASSEMBLY_H
 #define _ASSEMBLY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if (defined _WIN32 && !defined _WIN32_WCE) || (defined __WINS__ && defined _SYMBIAN) || defined(_OPENWAVE_SIMULATOR) || defined(WINCE_EMULATOR)    /* Symbian emulator for Ix86 */
 
 #pragma warning( disable : 4035 )	/* complains about inline asm not returning a value */
@@ -473,4 +477,7 @@ __attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)
 
 #endif	/* platforms */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _ASSEMBLY_H */

@@ -44,7 +44,9 @@
 #ifndef _MP3DEC_H
 #define _MP3DEC_H
 
+#ifdef ARDUINO
 #include <Arduino.h>
+#endif
 
 #if defined(_WIN32) && !defined(_WIN32_WCE)
 #

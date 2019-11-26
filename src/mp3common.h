@@ -47,6 +47,10 @@
 #include "mp3dec.h"
 #include "statname.h"	/* do name-mangling for static linking */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MAX_SCFBD		4		/* max scalefactor bands per channel */
 #define NGRANS_MPEG1	2
 #define NGRANS_MPEG2	1
@@ -119,5 +123,9 @@ extern const short bitsPerSlotTab[3];
 extern const short sideBytesTab[3][2];
 extern const short slotTab[3][3][15];
 extern const SFBandTable sfBandTable[3][3];
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _MP3COMMON_H */
