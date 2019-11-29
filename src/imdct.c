@@ -44,6 +44,7 @@
 
 #include "coder.h"
 #include "assembly.h"
+#include <stdint.h>
 
 /**************************************************************************************
  * Function:    AntiAlias

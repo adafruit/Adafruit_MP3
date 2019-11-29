@@ -56,6 +56,10 @@
 #ifndef _ASSEMBLY_H
 #define _ASSEMBLY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if (defined _WIN32 && !defined _WIN32_WCE) || (defined __WINS__ && defined _SYMBIAN) || defined(_OPENWAVE_SIMULATOR) || defined(WINCE_EMULATOR)    /* Symbian emulator for Ix86 */
 
 #pragma warning( disable : 4035 )	/* complains about inline asm not returning a value */
@@ -267,7 +271,7 @@ static __inline int CLZ(int x)
 	return numZeros;
 }
 
-#elif defined(__GNUC__) && defined(ARM)
+#elif defined(__GNUC__) && (defined(ARM) || defined(__ARMEL__))
 
 static __inline int MULSHIFT32(int x, int y)
 {
@@ -317,6 +321,42 @@ static __inline int CLZ(int x)
 	return numZeros;
 }
 
+typedef signed long long int    Word64;  // 64-bit signed integer.
+typedef union _U64 {
+        Word64 w64;
+        struct {
+                /* ARM ADS = little endian */
+                unsigned int lo32;
+                signed int   hi32;
+        } r;
+} U64;
+
+static __inline Word64 MADD64(Word64 sum64, int x, int y)
+{
+        U64 u;
+        u.w64 = sum64;
+
+        __asm__ volatile ("smlal %0,%1,%2,%3" : "+&r" (u.r.lo32), "+&r" (u.r.hi32) : "r" (x), "r" (y) : "cc");
+
+        return u.w64;
+}
+
+__attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)
+{
+  unsigned int xLo = (unsigned int) x;
+  int xHi = (int) (x >> 32);
+  int nComp = 32-n;
+  int tmp;
+  // Shortcut: n is always < 32.
+  __asm__ __volatile__( "lsl %2, %0, %3\n\t"  // tmp <- xHi<<(32-n)
+                        "asr %0, %0, %4\n\t"  // xHi <- xHi>>n
+                        "lsr %1, %1, %4\n\t"  // xLo <- xLo>>n
+                        "orr  %1, %2\n\t"      // xLo <= xLo || tmp
+                        : "+&r" (xHi), "+r" (xLo), "=&r" (tmp)
+                        : "r" (nComp), "r" (n) );
+  x = xLo | ((Word64)xHi << 32);
+  return( x );
+}
 #elif defined(__GNUC__) && defined(__AVR32_UC__)
 
 typedef signed long long int    Word64;  // 64-bit signed integer.
@@ -473,4 +513,7 @@ __attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)
 
 #endif	/* platforms */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _ASSEMBLY_H */

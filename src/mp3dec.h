@@ -44,7 +44,9 @@
 #ifndef _MP3DEC_H
 #define _MP3DEC_H
 
+#ifdef ARDUINO
 #include <Arduino.h>
+#endif
 
 #if defined(_WIN32) && !defined(_WIN32_WCE)
 #
@@ -57,6 +59,8 @@
 #elif defined(_SYMBIAN) && defined(__WINS__)	/* Symbian emulator for Ix86 */
 #
 #elif defined(__GNUC__) && defined(ARM)
+#
+#elif defined(__GNUC__) && defined(__ARMEL__)
 #
 #elif defined(__GNUC__) && defined(__i386__)
 #
