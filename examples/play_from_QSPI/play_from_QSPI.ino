@@ -1,9 +1,22 @@
 #include "Adafruit_MP3.h"
 #include <SPI.h>
-#include <SD.h>
-#include "Adafruit_QSPI_GD25Q.h"
+#include <SdFat.h>
+#include <Adafruit_SPIFlash.h>
 
-Adafruit_QSPI_GD25Q flash;
+#if defined(__SAMD51__) || defined(NRF52840_XXAA)
+  Adafruit_FlashTransport_QSPI flashTransport(PIN_QSPI_SCK, PIN_QSPI_CS, PIN_QSPI_IO0, PIN_QSPI_IO1, PIN_QSPI_IO2, PIN_QSPI_IO3);
+#else
+  #if (SPI_INTERFACES_COUNT == 1 || defined(ADAFRUIT_CIRCUITPLAYGROUND_M0))
+    Adafruit_FlashTransport_SPI flashTransport(SS, &SPI);
+  #else
+    Adafruit_FlashTransport_SPI flashTransport(SS1, &SPI1);
+  #endif
+#endif
+
+Adafruit_SPIFlash flash(&flashTransport);
+
+// file system object from SdFat
+FatFileSystem fatfs;
 
 //set this to a value between 0 and 4095 to raise/lower volume
 #define VOLUME_MAX 1023
@@ -49,6 +62,7 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  analogWriteResolution(12);
 #if defined(__SAMD51__)
   analogWrite(A0, 2048);
   analogWrite(A1, 2048);
@@ -57,19 +71,26 @@ void setup() {
   Serial.println("Native MP3 decoding!");
   Serial.print("Initializing QSPI storage...");
 
-  // see if the card is present and can be initialized:
-#if defined(__MK66FX1M0__) || defined(__MK20DX256__)  // teensy 3.6 or 3.1/2
-  analogWriteResolution(12);
-  while (!flash.begin()) {
-#else
-  while (!flash.begin()) {
-#endif
-    Serial.println("QSPI failed, or not present");
-    delay(2000);
+  // Initialize flash library and check its chip ID.
+  if (!flash.begin()) {
+    Serial.println("Error, failed to initialize flash chip!");
+    while(1);
   }
-  Serial.println("QSPI initialized.");
   
-  dataFile = SD.open(filename);
+  Serial.println("QSPI initialized.");
+  Serial.print("Flash chip JEDEC ID: 0x"); Serial.println(flash.getJEDECID(), HEX);
+
+  // First call begin to mount the filesystem.  Check that it returns true
+  // to make sure the filesystem was mounted.
+  if (!fatfs.begin(&flash)) {
+    Serial.println("Error, failed to mount newly formatted filesystem!");
+    Serial.println("Was the flash chip formatted with the fatfs_format example?");
+    while(1);
+  }
+  Serial.println("Mounted filesystem!");
+
+  
+  dataFile = fatfs.open(filename);
   if(!dataFile){
     Serial.println("could not open file!");
     while(1);
