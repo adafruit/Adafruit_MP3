@@ -156,46 +156,18 @@ static __inline Word64 SHL64(Word64 x, int n)
 	}
 }
 
-static __inline short SAR64_Clip(Word64 x, int n)
+// Shift right 26 and return the lower 16-bits (short)
+static __inline short SAR64_Clip(Word64 x)
 {
     unsigned int xLo = ((unsigned int *)&x)[0];
     int xHi = ((int *)&x)[1];
-    unsigned char nb = (unsigned char)n;
 
-    if (n < 32) {
         __asm {
             mov        edx, xHi
             mov        eax, xLo
-            mov        cl, nb
+            mov        cl, 26
             shrd    eax, edx, cl
-            sar        edx, cl
         }
-    } else if (n < 64) {
-        /* sar masks cl to 0x1f */
-        __asm {
-            mov        edx, xHi
-            mov        eax, xHi
-            mov        cl, nb
-            sar        edx, 31
-            sar        eax, cl
-        }
-    } else {
-        __asm {
-            sar        xHi, 31
-        }
-        return (short)xHi;
-    }
-// clip
-    __asm {
-        mov xHi,eax
-        mov edx,eax
-        sar xHi, 31     // sign
-        sar edx, 15
-        cmp edx, xHi
-        beq done
-        xor eax,32767
-    done:
-    }
 }
 
 static __inline Word64 SAR64(Word64 x, int n)
