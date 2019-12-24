@@ -509,7 +509,36 @@ __attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)
 
 #else
 
-#error Unsupported platform in assembly.h
+#include <stdint.h>
+
+#warning "Using generic implementation of intrinsics"
+
+typedef int64_t Word64;
+
+static inline int MULSHIFT32(int x, int y) {
+    return ((int64_t)x * y) >> 32;
+}
+
+static inline int FASTABS(int x) {
+    int sign = x >> 31;
+    return (x ^ sign) - sign;
+}
+
+static inline int CLZ(int x) {
+    return __builtin_clz(x);
+}
+
+static inline Word64 MADD64(Word64 sum, int x, int y) {
+    return sum + (int64_t)x * y;
+}
+
+static inline Word64 SHL64(Word64 x, int n) {
+    return x << n;
+}
+
+static inline Word64 SAR64(Word64 x, int n) {
+    return x >> n;
+}
 
 #endif	/* platforms */
 

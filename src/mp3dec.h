@@ -64,6 +64,8 @@
 #
 #elif defined(__GNUC__) && defined(__i386__)
 #
+#elif defined(__GNUC__) && defined(__amd64__)
+#
 #elif defined(_OPENWAVE_SIMULATOR) || defined(_OPENWAVE_ARMULATOR)
 #
 #elif defined(__GNUC__) && defined(__AVR32_UC__)
