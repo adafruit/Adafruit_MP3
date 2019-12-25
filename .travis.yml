@@ -20,10 +20,6 @@ env:
 before_install:
    - source <(curl -SLs https://raw.githubusercontent.com/adafruit/travis-ci-arduino/master/install.sh)
 
-install:
-   - arduino --install-library "Adafruit SPIFlash"
-   - arduino --install-library "SdFat - Adafruit Fork"
-
 script:
    - build_platform m4
 
