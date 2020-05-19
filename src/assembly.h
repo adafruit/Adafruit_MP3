@@ -566,6 +566,10 @@ static inline Word64 SAR64(Word64 x, int n) {
     return x >> n;
 }
 
+static inline short SAR64_Clip(Word64 x) {
+    return SAR64(x, 26);
+}
+
 #endif	/* platforms */
 
 #ifdef __cplusplus
