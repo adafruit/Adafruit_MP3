@@ -383,15 +383,32 @@ static __inline Word64 MADD64(Word64 sum64, int x, int y)
         return u.w64;
 }
 
-// Shift the 64-bit value right by 26 bits and return the lower 16-bits
-__attribute__((__always_inline__)) static __inline short SAR64_Clip(Word64 x)
+/* Ken's trick: clips to [-32768, 32767] */
+//sign = x >> 31;
+//if (sign != (x >> 15))
+//    x = sign ^ ((1 << 15) - 1);
+__attribute__((__always_inline__)) static __inline short SAR64_Clip(Word64 x, int n)
 {
   unsigned int xLo = (unsigned int) x;
   int xHi = (int) (x >> 32);
-  __asm__ __volatile__(
-                        "lsr %1, %1, #26\n\t"  // xLo <- xLo>>n
-                        "orr %1, %1, %0, lsl #6\n\t"      // xLo <= xLo || (xHi << 6)
-                        : "+&r" (xHi), "+r" (xLo) );
+  int nComp = 32-n;
+  int tmp;
+  // Shortcut: n is always < 32.
+  __asm__ __volatile__( "lsl %2, %0, %3\n\t"  // tmp <- xHi<<(32-n)
+                        "lsr %1, %1, %4\n\t"  // xLo <- xLo>>n
+                        "orr %1, %2\n\t"      // xLo <= xLo || tmp
+// Uncomment this part if you really need it to saturate the output to 16-bits
+// This didn't appear necessary because the temp data is shifted right by 26 bits
+// and doesn't grow large enough to overflow a 16-bit signed value
+//                        "asr %2, %1, #31\n\t" // get sign in tmp
+//                        "asr %0, %1, #15\n\t" // use xHi as tmp2
+//                        "mov %3, #-1\n\t" // prep constant 0x7fff
+//                        "lsr %3, #17\n\t"
+//                        "cmp %2, %0\n\t"      // if (sign != (x >> 15))
+//                        "it ne\n\t"
+//                        "eorne %1, %3\n\t"
+                        : "+&r" (xHi), "+r" (xLo), "=&r" (tmp)
+                        : "r" (nComp), "r" (n) );
   return( (short)xLo );
 }
 

@@ -143,7 +143,7 @@ void PolyphaseMono(short *pcm, int *vbuf, const int *coefBase)
 	MC0M(7)
 
 //	*(pcm + 0) = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
-	*(pcm + 0) = SAR64_Clip(sum1L);
+	*(pcm + 0) = SAR64_Clip(sum1L, (32+DEF_NFRACBITS-CSHIFT));
 
 	/* special case, output sample 16 */
 	coef = coefBase + 256;
@@ -160,7 +160,7 @@ void PolyphaseMono(short *pcm, int *vbuf, const int *coefBase)
 	MC1M(7)
 
 //	*(pcm + 16) = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
-	*(pcm + 16) = SAR64_Clip(sum1L);
+	*(pcm + 16) = SAR64_Clip(sum1L, (32+DEF_NFRACBITS-CSHIFT));
 
 	/* main convolution loop: sum1L = samples 1, 2, 3, ... 15   sum2L = samples 31, 30, ... 17 */
 	coef = coefBase + 16;
@@ -183,8 +183,8 @@ void PolyphaseMono(short *pcm, int *vbuf, const int *coefBase)
 		vb1 += 64;
 //		*(pcm)       = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
 //		*(pcm + 2*i) = ClipToShort((int)SAR64(sum2L, (32-CSHIFT)), DEF_NFRACBITS);
-		*(pcm) = SAR64_Clip(sum1L);
-		*(pcm + 2*i) = SAR64_Clip(sum2L);
+		*(pcm) = SAR64_Clip(sum1L, (32+DEF_NFRACBITS-CSHIFT));
+		*(pcm + 2*i) = SAR64_Clip(sum2L, (32+DEF_NFRACBITS-CSHIFT));
 		pcm++;
 	}
 }
@@ -261,8 +261,8 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase)
 
 //	*(pcm + 0) = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
 //	*(pcm + 1) = ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS);
-	*(pcm + 0) = SAR64_Clip(sum1L);
-	*(pcm + 1) = SAR64_Clip(sum1R);
+	*(pcm + 0) = SAR64_Clip(sum1L, (32+DEF_NFRACBITS-CSHIFT));
+	*(pcm + 1) = SAR64_Clip(sum1R, (32+DEF_NFRACBITS-CSHIFT));
 
 	/* special case, output sample 16 */
 	coef = coefBase + 256;
@@ -280,8 +280,8 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase)
 
 //	*(pcm + 2*16 + 0) = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
 //	*(pcm + 2*16 + 1) = ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS);
-	*(pcm + 2*16 + 0) = SAR64_Clip(sum1L);
-	*(pcm + 2*16 + 1) = SAR64_Clip(sum1R);
+	*(pcm + 2*16 + 0) = SAR64_Clip(sum1L, (32+DEF_NFRACBITS-CSHIFT));
+	*(pcm + 2*16 + 1) = SAR64_Clip(sum1R, (32+DEF_NFRACBITS-CSHIFT));
 
 	/* main convolution loop: sum1L = samples 1, 2, 3, ... 15   sum2L = samples 31, 30, ... 17 */
 	coef = coefBase + 16;
@@ -305,12 +305,12 @@ void PolyphaseStereo(short *pcm, int *vbuf, const int *coefBase)
 		vb1 += 64;
 //		*(pcm + 0)         = ClipToShort((int)SAR64(sum1L, (32-CSHIFT)), DEF_NFRACBITS);
 //		*(pcm + 1)         = ClipToShort((int)SAR64(sum1R, (32-CSHIFT)), DEF_NFRACBITS);
-		*(pcm + 0) = SAR64_Clip(sum1L);
-		*(pcm + 1) = SAR64_Clip(sum1R);
+		*(pcm + 0) = SAR64_Clip(sum1L, (32+DEF_NFRACBITS-CSHIFT));
+		*(pcm + 1) = SAR64_Clip(sum1R, (32+DEF_NFRACBITS-CSHIFT));
 //		*(pcm + 2*2*i + 0) = ClipToShort((int)SAR64(sum2L, (32-CSHIFT)), DEF_NFRACBITS);
 //		*(pcm + 2*2*i + 1) = ClipToShort((int)SAR64(sum2R, (32-CSHIFT)), DEF_NFRACBITS);
-		*(pcm + 2*2*i + 0) = SAR64_Clip(sum2L);
-		*(pcm + 2*2*i + 1) = SAR64_Clip(sum2R);
+		*(pcm + 2*2*i + 0) = SAR64_Clip(sum2L, (32+DEF_NFRACBITS-CSHIFT));
+		*(pcm + 2*2*i + 1) = SAR64_Clip(sum2R, (32+DEF_NFRACBITS-CSHIFT));
 
 		pcm += 2;
 	}
