@@ -156,20 +156,6 @@ static __inline Word64 SHL64(Word64 x, int n)
 	}
 }
 
-// Shift right 26 and return the lower 16-bits (short)
-static __inline short SAR64_Clip(Word64 x)
-{
-    unsigned int xLo = ((unsigned int *)&x)[0];
-    int xHi = ((int *)&x)[1];
-
-        __asm {
-            mov        edx, xHi
-            mov        eax, xLo
-            mov        cl, 26
-            shrd    eax, edx, cl
-        }
-}
-
 static __inline Word64 SAR64(Word64 x, int n)
 {
 	unsigned int xLo = ((unsigned int *)&x)[0];
@@ -353,18 +339,6 @@ static __inline Word64 MADD64(Word64 sum64, int x, int y)
         __asm__ volatile ("smlal %0,%1,%2,%3" : "+&r" (u.r.lo32), "+&r" (u.r.hi32) : "r" (x), "r" (y) : "cc");
 
         return u.w64;
-}
-
-// Shift the 64-bit value right by 26 bits and return the lower 16-bits
-__attribute__((__always_inline__)) static __inline short SAR64_Clip(Word64 x)
-{
-  unsigned int xLo = (unsigned int) x;
-  int xHi = (int) (x >> 32);
-  __asm__ __volatile__(
-                        "lsr %1, %1, #26\n\t"  // xLo <- xLo>>n
-                        "orr %1, %1, %0, lsl #6\n\t"      // xLo <= xLo || (xHi << 6)
-                        : "+&r" (xHi), "+r" (xLo) );
-  return( (short)xLo );
 }
 
 __attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)

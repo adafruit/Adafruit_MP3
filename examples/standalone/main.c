@@ -52,6 +52,34 @@ bool mp3file_find_sync_word(stream* self) {
 void fatal(const char *msg) { fprintf(stderr, "%s\n", msg); exit(1); }
 void perror_fatal(const char *msg) { perror(msg); exit(1); }
 
+bool probable_overflow(int16_t a, int16_t b) {
+    if(a > 32700 && b < -32700) {
+        return true;
+    } else if(b > 32700 && a < -32700) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void look_for_overflow(int16_t *ptr, size_t os, int frame) {
+    for(size_t i=2; i<os; i+=2) {
+        int16_t l_old = ptr[i-2];
+        int16_t l_new = ptr[i];
+        int16_t r_old = ptr[i-1];
+        int16_t r_new = ptr[i+1];
+
+        if(probable_overflow(l_old, l_new)) {
+            printf("probable overflow, left  channel,  frame %5d sample %5d, %5d\n", frame, (i/2)-1, i/2);
+            printf("Consecutive sample values: %5d %5d\n", l_old, l_new);
+        }
+        if(probable_overflow(r_old, r_new)) {
+            printf("probable overflow, right channel,  frame %5d sample %5d, %5d\n", frame, (i/2)-1, i/2);
+            printf("Consecutive sample values: %5d %5d\n", r_old, r_new);
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if(argc != 3) {
         fprintf(stderr, "Decode MP3 into headerless LE16 stereo\n");
@@ -79,6 +107,7 @@ int main(int argc, char **argv) {
     
     skip_id3v2(&s);
 
+    int frame=0;
     while(mp3file_find_sync_word(&s)) {
         MP3FrameInfo fi;
         int err = MP3GetNextFrameInfo(decoder, &fi, READ_PTR(&s));
@@ -88,6 +117,7 @@ int main(int argc, char **argv) {
         err = MP3Decode(decoder, &inbuf, &bytes_left,
                 audiodata, 0);
         if(err != ERR_MP3_NONE) fatal("MP3Decode");
+        look_for_overflow(audiodata, fi.outputSamps, ++frame);
         if(fwrite(audiodata, 1, fi.outputSamps*sizeof(int16_t), fo)
                 != fi.outputSamps*sizeof(int16_t))
             perror_fatal("fwrite");
