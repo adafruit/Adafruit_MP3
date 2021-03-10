@@ -271,7 +271,7 @@ static __inline int CLZ(int x)
 	return numZeros;
 }
 
-#elif defined(__GNUC__) && (defined(ARM) || defined(__ARMEL__))
+#elif defined(__GNUC__) && (defined(ARM) || defined(__ARMEL__)) && (__ARM_ARCH >= 7)
 
 static __inline int MULSHIFT32(int x, int y)
 {
@@ -510,8 +510,6 @@ __attribute__((__always_inline__)) static __inline Word64 SAR64(Word64 x, int n)
 #else
 
 #include <stdint.h>
-
-#warning "Using generic implementation of intrinsics"
 
 typedef int64_t Word64;
 
