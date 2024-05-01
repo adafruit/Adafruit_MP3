@@ -70,11 +70,11 @@ void look_for_overflow(int16_t *ptr, size_t os, int frame) {
         int16_t r_new = ptr[i+1];
 
         if(probable_overflow(l_old, l_new)) {
-            printf("probable overflow, left  channel,  frame %5d sample %5d, %5d\n", frame, (i/2)-1, i/2);
+            printf("probable overflow, left  channel,  frame %5d sample %5zd, %5zd\n", frame, (i/2)-1, i/2);
             printf("Consecutive sample values: %5d %5d\n", l_old, l_new);
         }
         if(probable_overflow(r_old, r_new)) {
-            printf("probable overflow, right channel,  frame %5d sample %5d, %5d\n", frame, (i/2)-1, i/2);
+            printf("probable overflow, right channel,  frame %5d sample %5zd, %5zd\n", frame, (i/2)-1, i/2);
             printf("Consecutive sample values: %5d %5d\n", r_old, r_new);
         }
     }
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
     if(fstat(fileno(fi), &st) < 0) perror_fatal("fstat");
 
     stream s;
-    s.ptr = malloc(st.st_size);
+    s.ptr = calloc(st.st_size, 1);
     if(!s.ptr) perror_fatal("malloc");
     s.end = s.ptr + st.st_size;
 
@@ -105,10 +105,10 @@ int main(int argc, char **argv) {
     FILE *fo = fopen(argv[2], "wb");
     if(!fo) perror_fatal("open");
     
-    skip_id3v2(&s);
 
     int frame=0;
     while(mp3file_find_sync_word(&s)) {
+        skip_id3v2(&s);
         MP3FrameInfo fi;
         int err = MP3GetNextFrameInfo(decoder, &fi, READ_PTR(&s));
         if(err != ERR_MP3_NONE) fatal("MP3GetNextFrameInfo");
