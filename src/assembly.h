@@ -518,12 +518,16 @@ static inline int MULSHIFT32(int x, int y) {
 }
 
 static inline int FASTABS(int x) {
+#if defined(GNUC)
+    return __builtin_abs(x);
+#else
     int sign = x >> 31;
     return (x ^ sign) - sign;
+#endif
 }
 
 static inline int CLZ(int x) {
-    return __builtin_clz(x);
+    return x ? __builtin_clz(x) : 32;
 }
 
 static inline Word64 MADD64(Word64 sum, int x, int y) {
@@ -536,10 +540,6 @@ static inline Word64 SHL64(Word64 x, int n) {
 
 static inline Word64 SAR64(Word64 x, int n) {
     return x >> n;
-}
-
-static inline short SAR64_Clip(Word64 x) {
-    return SAR64(x, 26);
 }
 
 #endif	/* platforms */
