@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -50,6 +51,13 @@ bool mp3file_find_sync_word(stream* self) {
 }
 
 void fatal(const char *msg) { fprintf(stderr, "%s\n", msg); exit(1); }
+void fatalf(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    exit(1);
+}
 void perror_fatal(const char *msg) { perror(msg); exit(1); }
 
 bool probable_overflow(int16_t a, int16_t b) {
@@ -116,12 +124,21 @@ int main(int argc, char **argv) {
         uint8_t *inbuf = READ_PTR(&s);
         err = MP3Decode(decoder, &inbuf, &bytes_left,
                 audiodata, 0);
-        if(err != ERR_MP3_NONE) fatal("MP3Decode");
-        look_for_overflow(audiodata, fi.outputSamps, ++frame);
-        if(fwrite(audiodata, 1, fi.outputSamps*sizeof(int16_t), fo)
-                != fi.outputSamps*sizeof(int16_t))
-            perror_fatal("fwrite");
-        CONSUME(&s, BYTES_LEFT(&s) - bytes_left); 
+        switch(err) {
+            default:
+                fatalf("MP3Decode() -> %d", err);
+            case ERR_MP3_INDATA_UNDERFLOW:
+                // treat as EOF (last data frame was incomplete)
+                break;
+            case ERR_MP3_NONE:
+                look_for_overflow(audiodata, fi.outputSamps, ++frame);
+                if(fwrite(audiodata, 1, fi.outputSamps*sizeof(int16_t), fo)
+                        != fi.outputSamps*sizeof(int16_t))
+                    perror_fatal("fwrite");
+                __attribute__((fallthrough));
+            case ERR_MP3_MAINDATA_UNDERFLOW:
+                CONSUME(&s, BYTES_LEFT(&s) - bytes_left); 
+        }
     }
 
     return 0;
